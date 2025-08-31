@@ -40,105 +40,92 @@ function SectionLink({ number, onLinkClick, children }) {
 }
 
 // --- AIContentRenderer ---
-function AIContentRenderer({ content, onSectionLinkClick, onLegalLinkClick, openOptions, onOptionToggle }) {
-    // This is the helper function that turns plain text into interactive links.
-    const renderTextWithLinks = (text) => {
-        if (typeof text !== 'string') return text;
+// --- NEW, CORRECTED CONTENT RENDERER ---
 
-        const sectionPattern = /(Section\s\d+(?:\.\d+)?)/;
-        const caseLawPattern = /(\*[^*]+\sv\.\s[^*]+\*)/;
-        const boldPattern = /(\*\*.*?\*\*)/;
-
-        const combinedRegex = new RegExp(`(${sectionPattern.source}|${caseLawPattern.source}|${boldPattern.source})`, 'g');
-
-        const parts = text.split(combinedRegex).filter(Boolean);
-
-        return parts.map((part, i) => {
-            if (new RegExp(sectionPattern.source).test(part)) {
-                const sectionNumber = part.match(/(\d+(\.\d+)?)/)[0];
-                return (
-                    <SectionLink key={i} number={sectionNumber} onLinkClick={onSectionLinkClick}>
-                        {part}
-                    </SectionLink>
-                );
-            }
-            if (new RegExp(caseLawPattern.source).test(part)) {
-                const caseName = part.slice(1, -1);
-                return (
-                    <span key={i} className="inline-flex items-center gap-2">
-                        <em className="font-semibold">{caseName}</em>
-                        <button
-                            onClick={(e) => {
-                                e.stopPropagation();
-                                if (typeof onLegalLinkClick === 'function') {
-                                    onLegalLinkClick(caseName);
-                                }
-                            }}
-                            className="bg-purple-600 hover:bg-purple-700 text-white font-semibold px-2 py-0.5 rounded-md text-xs inline-flex items-center gap-1"
-                        >
-                            <Search size={12} />
-                            View References
-                        </button>
-                    </span>
-                );
-            }
-            if (new RegExp(boldPattern.source).test(part)) {
-                 return <strong key={i} className="text-[#faecc4]">{part.slice(2, -2)}</strong>;
-            }
-            return <span key={i}>{part}</span>;
-        });
-    };
-
-    // --- Main Renderer Logic ---
-
-    // If content is a simple string, render it with links.
-    if (typeof content === 'string') {
-        const lines = content.split('\n').filter(line => line.trim() !== '');
-        return (
-            <div className="text-white space-y-2">
-                {lines.map((line, index) => <p key={index}>{renderTextWithLinks(line)}</p>)}
-            </div>
-        );
+// Component 1: Handles parsing and rendering of raw text strings with links.
+// This component takes simple strings and turns them into interactive content.
+function ParsedContent({ text, onSectionLinkClick, onLegalLinkClick }) {
+    // If the content is not a string (i.e., it's already a React element from a demo),
+    // return it directly without trying to process it again. This prevents the bug.
+    if (typeof text !== 'string') {
+        return text;
     }
-    
-    // If it's already a React element (like from the demo scenarios), render it directly to prevent re-processing.
+
+    const sectionPattern = /(Section\s\d+(?:\.\d+)?)/;
+    const caseLawPattern = /(\*[^*]+\sv\.\s[^*]+\*)/;
+    const boldPattern = /(\*\*.*?\*\*)/;
+
+    const combinedRegex = new RegExp(`(${sectionPattern.source}|${caseLawPattern.source}|${boldPattern.source})`, 'g');
+    const parts = text.split(combinedRegex).filter(Boolean);
+
+    return (
+        <>
+            {parts.map((part, i) => {
+                if (sectionPattern.test(part)) {
+                    const sectionNumber = part.match(/(\d+(\.\d+)?)/)[0];
+                    return (
+                        <SectionLink key={i} number={sectionNumber} onLinkClick={onSectionLinkClick}>
+                            {part}
+                        </SectionLink>
+                    );
+                }
+                if (caseLawPattern.test(part)) {
+                    const caseName = part.slice(1, -1);
+                    return (
+                        <span key={i} className="inline-flex items-center gap-2">
+                            <em className="font-semibold">{caseName}</em>
+                            <button
+                                onClick={(e) => { e.stopPropagation(); onLegalLinkClick(caseName); }}
+                                className="bg-purple-600 hover:bg-purple-700 text-white font-semibold px-2 py-0.5 rounded-md text-xs inline-flex items-center gap-1"
+                            >
+                                <Search size={12} /> View References
+                            </button>
+                        </span>
+                    );
+                }
+                if (boldPattern.test(part)) {
+                    return <strong key={i} className="text-[#faecc4]">{part.slice(2, -2)}</strong>;
+                }
+                return <span key={i}>{part}</span>;
+            })}
+        </>
+    );
+}
+
+// Component 2: Handles the structure of the AI response and delegates text rendering to ParsedContent.
+// This component understands the shape of your data (objects, arrays, etc.).
+function AIContentRenderer({ content, onSectionLinkClick, onLegalLinkClick, openOptions, onOptionToggle }) {
+    if (!content) return null;
+
     if (React.isValidElement(content)) {
         return content;
     }
 
-    // If it's an array, map over it and render each item.
     if (Array.isArray(content)) {
-        // Handle array of {header, text} objects (Steps 1-3)
         if (content.length > 0 && typeof content[0] === 'object' && content[0] !== null && 'header' in content[0]) {
             return (
                 <div className="text-white space-y-2">
                     {content.map((item, index) => (
                         <p key={index} className="whitespace-pre-line">
                             <strong className="text-[#faecc4]">{item.header}</strong>
-                            {/* Render the text part, which might contain links */}
-                            <AIContentRenderer content={item.text} onSectionLinkClick={onSectionLinkClick} onLegalLinkClick={onLegalLinkClick} />
+                            <ParsedContent text={item.text} onSectionLinkClick={onSectionLinkClick} onLegalLinkClick={onLegalLinkClick} />
                         </p>
                     ))}
                 </div>
             );
         }
-        // Handle simple array of strings (like implementation steps)
         return (
             <div className="text-white space-y-2">
-                {content.map((item, index) => <p key={index}>{renderTextWithLinks(String(item))}</p>)}
+                {content.map((item, index) => <p key={index}><ParsedContent text={String(item)} onSectionLinkClick={onSectionLinkClick} onLegalLinkClick={onLegalLinkClick} /></p>)}
             </div>
         );
     }
 
-    // If it's an object, determine its structure and render accordingly.
     if (typeof content === 'object' && content !== null) {
-        // Handle Step 6 structure
         if (content.recommendationSummary && content.implementationSteps) {
             return (
                 <div className="space-y-4">
-                    <div>
-                        <AIContentRenderer content={content.recommendationSummary} onSectionLinkClick={onSectionLinkClick} onLegalLinkClick={onLegalLinkClick} />
-                    </div>
+                    <p><ParsedContent text={content.recommendationSummary} onSectionLinkClick={onSectionLinkClick} onLegalLinkClick={onLegalLinkClick} /></p>
                     <div className="border-t border-gray-600 pt-4">
                         <h4 className="font-bold text-lg text-[#faecc4] mb-2">Implementation Steps:</h4>
                         <AIContentRenderer content={content.implementationSteps} onSectionLinkClick={onSectionLinkClick} onLegalLinkClick={onLegalLinkClick} />
@@ -147,7 +134,6 @@ function AIContentRenderer({ content, onSectionLinkClick, onLegalLinkClick, open
             );
         }
 
-        // Handle Steps 4 & 5 structure (options)
         if (content.optionA || content.optionB || content.optionC) {
              return (
                 <div className="text-white">
@@ -160,11 +146,7 @@ function AIContentRenderer({ content, onSectionLinkClick, onLegalLinkClick, open
                                     isOpen={!!openOptions[key]}
                                     onToggle={() => onOptionToggle(key)}
                                  >
-                                    <AIContentRenderer
-                                        content={option}
-                                        onSectionLinkClick={onSectionLinkClick}
-                                        onLegalLinkClick={onLegalLinkClick}
-                                    />
+                                    <AIContentRenderer content={option} onSectionLinkClick={onSectionLinkClick} onLegalLinkClick={onLegalLinkClick} />
                                 </ExpandableOption>
                             );
                          }
@@ -173,20 +155,19 @@ function AIContentRenderer({ content, onSectionLinkClick, onLegalLinkClick, open
                 </div>
             );
         }
-        
-        // Handle generic objects (like the inside of an option)
+
         return (
             <div className="space-y-3 text-white">
                 {Object.entries(content).map(([prop, val]) => {
-                    if (prop === 'title') return null; // Don't render the title again inside the expandable
+                    if (prop === 'title') return null;
                     const formattedProp = prop.charAt(0).toUpperCase() + prop.slice(1).replace(/([A-Z])/g, ' $1');
-                    
+
                     if (prop === 'suggestedLanguage') {
                         return (
                             <div key={prop} className="mt-2">
                                 <strong className="text-[#faecc4]">{formattedProp}:</strong>
                                 <div className="mt-1 p-3 border border-dashed border-gray-500 rounded-md bg-gray-800 italic whitespace-pre-line">
-                                    {renderTextWithLinks(String(val))}
+                                    <ParsedContent text={String(val)} onSectionLinkClick={onSectionLinkClick} onLegalLinkClick={onLegalLinkClick} />
                                 </div>
                             </div>
                         );
@@ -194,24 +175,26 @@ function AIContentRenderer({ content, onSectionLinkClick, onLegalLinkClick, open
 
                     return (
                         <p key={prop}>
-                            <strong>{formattedProp}:</strong> <span>{renderTextWithLinks(String(val))}</span>
+                            <strong>{formattedProp}:</strong> <span><ParsedContent text={String(val)} onSectionLinkClick={onSectionLinkClick} onLegalLinkClick={onLegalLinkClick} /></span>
                         </p>
                     );
                 })}
             </div>
         );
     }
-    
+
+    if (typeof content === 'string') {
+        return (
+            <div className="text-white space-y-2">
+                {content.split('\n').filter(line => line.trim() !== '').map((line, index) =>
+                    <p key={index}><ParsedContent text={line} onSectionLinkClick={onSectionLinkClick} onLegalLinkClick={onLegalLinkClick} /></p>
+                )}
+            </div>
+        );
+    }
+
     return null;
 }
-    const lines = String(content).split('\n').filter(line => line.trim() !== '');
-    return (
-        <div className="text-white space-y-2">
-            {lines.map((line, index) => <p key={index}>{renderTextWithLinks(line)}</p>)}
-        </div>
-    );
-}
-
 
 // --- Handbook Section Modal ---
 function HandbookSectionModal({ section, onClose }) {
