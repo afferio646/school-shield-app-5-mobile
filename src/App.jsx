@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect, useMemo, useCallback } from 'react';
-import { Bell, BookOpen, Shield, AlertCircle, TrendingUp, MessageCircle, Gavel, ChevronLeft, ChevronRight, Calendar, X, Archive, ExternalLink, Search } from "lucide-react";
+import { Bell, BookOpen, Shield, AlertCircle, TrendingUp, MessageCircle, Gavel, ChevronLeft, ChevronRight, Calendar, X, Archive, ExternalLink, Search, Menu } from "lucide-react";
 
 // --- COMPONENT IMPORTS ---
 // Paths are set to the components subfolder as per your project structure.
@@ -1189,6 +1189,7 @@ const findSectionByNumber = (numberStr) => {
 
 export default function App() {
     const [page, setPage] = useState("dashboard");
+    const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
     const [showSuggestionModal, setShowSuggestionModal] = useState(false);
     const [suggestedUpdate, setSuggestedUpdate] = useState("");
     const suggestionSectionRef = useRef("");
@@ -1942,73 +1943,97 @@ Question: "${questionText}"`;
 
     return (
         <div className="min-h-screen flex flex-col" style={{ background: "#fff" }}>
-            <header className="shadow flex items-center justify-between px-8 py-4" style={{ background: "#7c2d2d" }}>
-                <img
-                    src={SCHOOL_LOGO}
-                    alt="School Logo"
-                    className="h-20 w-20 rounded-2xl border-4 border-white object-cover shadow-lg"
-                />
-                <div className="text-right">
-                    <div
-                        className="flex items-center justify-end"
-                        style={{
-                            color: "#fff",
-                            fontSize: "2.5rem",
-                            lineHeight: 1.1,
-                            fontFamily: 'Arial, sans-serif'
-                        }}
-                    >
-                        <span className="font-normal">
-                            Navigation IQ
-                            <sup style={{ fontSize: '0.3em', position: 'relative', top: '-1.5em', marginLeft: '2px' }}>TM</sup>
-                        </span>
-                    </div>
-                    <div
-                        className="font-semibold"
-                        style={{
-                            color: "#faecc4",
-                            fontSize: "0.9rem",
-                            marginTop: "4px",
-                            lineHeight: 1.4
-                        }}
-                    >
-                        The Smart Navigation System for School Policy, Risk Management,
-                        <br />
-                        Incident Guidance, and Regulatory Insights
-                    </div>
-                </div>
-            </header>
+          <header className="shadow flex items-center justify-between px-4 sm:px-8 py-4" style={{ background: "#7c2d2d" }}>
+    <div className="flex items-center gap-4">
+        <img
+            src={SCHOOL_LOGO}
+            alt="School Logo"
+            className="h-16 w-16 md:h-20 md:w-20 rounded-2xl border-4 border-white object-cover shadow-lg"
+        />
+    </div>
+    <div className="hidden md:block text-right">
+        <div
+            className="flex items-center justify-end"
+            style={{
+                color: "#fff",
+                fontSize: "2.5rem",
+                lineHeight: 1.1,
+                fontFamily: 'Arial, sans-serif'
+            }}
+        >
+            <span className="font-normal">
+                Navigation IQ
+                <sup style={{ fontSize: '0.3em', position: 'relative', top: '-1.5em', marginLeft: '2px' }}>TM</sup>
+            </span>
+        </div>
+        <div
+            className="font-semibold"
+            style={{
+                color: "#faecc4",
+                fontSize: "0.9rem",
+                marginTop: "4px",
+                lineHeight: 1.4
+            }}
+        >
+            The Smart Navigation System for School Policy, Risk Management,
+            <br />
+            Incident Guidance, and Regulatory Insights
+        </div>
+    </div>
+    <div className="md:hidden">
+        <button onClick={() => setIsMobileMenuOpen(true)} className="text-white">
+            <Menu size={32} />
+        </button>
+    </div>
+</header>
 
-            <div className="flex flex-1 min-h-0">
-                <aside className="border-r pt-2 px-4 flex flex-col gap-2 min-w-[230px] shadow-md" style={{ background: "#7c2d2d" }}>
-                    {SIDEBAR_LINKS.map(link => (
-                        <button
-                            key={link.key}
-                            className="flex items-center gap-3 px-5 py-2 w-full justify-start text-base font-semibold rounded-lg shadow border-2 border-white transition-all"
-                            style={{
-                                background: page === link.key ? "#7c2d2d" : "#fff",
-                                color: page === link.key ? "#fff" : "#111",
-                                borderColor: "#fff"
-                            }}
-                            onClick={() => setPage(link.key)}
-                        >
-                            {React.cloneElement(link.icon, { color: page === link.key ? "#fff" : "#7c2d2d" })}
-                            {link.label}
-                        </button>
-                    ))}
-                </aside>
+           <div className="flex flex-1 min-h-0">
+    {/* Overlay for mobile menu */}
+    {isMobileMenuOpen && (
+        <div
+            className="fixed inset-0 bg-black bg-opacity-50 z-20 md:hidden"
+            onClick={() => setIsMobileMenuOpen(false)}
+        ></div>
+    )}
 
-                <main className="flex-1 p-10 overflow-y-auto bg-gray-100">
-                    {page === "dashboard" && DASHBOARD}
-                    {page === "risk" && <RiskAssessmentCenter handbookText={fullHandbookText} apiKey={GEMINI_API_KEY} handbookSectionLanguage={handbookSectionLanguage} onSectionLinkClick={handleSectionLinkClick} onLegalLinkClick={handleOpenLegalJournal} />}
-                    {page === "handbook" && HANDBOOK}
-                    {page === "calendar" && <CALENDAR />}
-                    {page === "alerts" && ALERTS}
-                    {page === "trends" && TRENDS}
-                    {page === "hosqa" && HOSQA}
-                    {page === "legal" && LEGAL}
-                </main>
-            </div>
+    {/* Sidebar */}
+    <aside className={`fixed md:relative top-0 left-0 h-full z-30 pt-2 px-4 flex flex-col gap-2 min-w-[250px] shadow-md transition-transform duration-300 ease-in-out ${isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full'} md:translate-x-0`} style={{ background: "#7c2d2d" }}>
+        <div className="md:hidden flex justify-end mb-2">
+                <button onClick={() => setIsMobileMenuOpen(false)} className="text-white">
+                <X size={28} />
+            </button>
+        </div>
+        {SIDEBAR_LINKS.map(link => (
+            <button
+                key={link.key}
+                className="flex items-center gap-3 px-5 py-2 w-full justify-start text-base font-semibold rounded-lg shadow border-2 border-white transition-all"
+                style={{
+                    background: page === link.key ? "#7c2d2d" : "#fff",
+                    color: page === link.key ? "#fff" : "#111",
+                    borderColor: "#fff"
+                }}
+                onClick={() => {
+                    setPage(link.key);
+                    setIsMobileMenuOpen(false); // Close menu on navigation
+                }}
+            >
+                {React.cloneElement(link.icon, { color: page === link.key ? "#fff" : "#7c2d2d" })}
+                {link.label}
+            </button>
+        ))}
+    </aside>
+
+    <main className="flex-1 p-4 md:p-10 overflow-y-auto w-full">
+        {page === "dashboard" && DASHBOARD}
+        {page === "risk" && <RiskAssessmentCenter handbookText={fullHandbookText} apiKey={GEMINI_API_KEY} handbookSectionLanguage={handbookSectionLanguage} onSectionLinkClick={handleSectionLinkClick} onLegalLinkClick={handleOpenLegalJournal} />}
+        {page === "handbook" && HANDBOOK}
+        {page === "calendar" && <CALENDAR />}
+        {page === "alerts" && ALERTS}
+        {page === "trends" && TRENDS}
+        {page === "hosqa" && HOSQA}
+        {page === "legal" && LEGAL}
+    </main>
+</div>
 
             {showSuggestionModal && (
                 <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-40">
