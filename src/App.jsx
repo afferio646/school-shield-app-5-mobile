@@ -41,52 +41,53 @@ function SectionLink({ number, onLinkClick, children }) {
 
 // --- AIContentRenderer ---
 function AIContentRenderer({ content, onSectionLinkClick, onLegalLinkClick, openOptions, onOptionToggle }) {
-    const renderTextWithLinks = (text) => {
-        if (typeof text !== 'string') return text;
+   const renderTextWithLinks = (text) => {
+    if (typeof text !== 'string') return text;
 
-        const sectionRegex = /(Section\s\d+(?:\.\d+)?)/;
-        const caseLawRegex = /(\*[^*]+\sv\.\s[^*]+\*)/;
-        const boldRegex = /(\*\*.*?\*\*)/;
+    // Corrected regular expressions to prevent duplicate capturing
+    const sectionPattern = /(Section\s\d+(?:\.\d+)?)/;
+    const caseLawPattern = /(\*[^*]+\sv\.\s[^*]+\*)/;
+    const boldPattern = /(\*\*.*?\*\*)/;
 
-        const combinedRegex = new RegExp(`(${sectionRegex.source}|${caseLawRegex.source}|${boldRegex.source})`, 'g');
+    const combinedRegex = new RegExp(`(${sectionPattern.source}|${caseLawPattern.source}|${boldPattern.source})`, 'g');
 
-        const parts = text.split(combinedRegex).filter(Boolean);
+    const parts = text.split(combinedRegex).filter(Boolean);
 
-        return parts.map((part, i) => {
-            if (sectionRegex.test(part)) {
-                const sectionNumber = part.match(/(\d+(\.\d+)?)/)[0];
-                return (
-                    <SectionLink key={i} number={sectionNumber} onLinkClick={onSectionLinkClick}>
-                        {part}
-                    </SectionLink>
-                );
-            }
-            if (caseLawRegex.test(part)) {
-                const caseName = part.slice(1, -1);
-                return (
-                    <span key={i} className="inline-flex items-center gap-2">
-                        <em className="font-semibold">{caseName}</em>
-                        <button
-                            onClick={(e) => {
-                                e.stopPropagation();
-                                if (typeof onLegalLinkClick === 'function') {
-                                    onLegalLinkClick(caseName);
-                                }
-                            }}
-                            className="bg-purple-600 hover:bg-purple-700 text-white font-semibold px-2 py-0.5 rounded-md text-xs inline-flex items-center gap-1"
-                        >
-                            <Search size={12} />
-                            View References
-                        </button>
-                    </span>
-                );
-            }
-            if (boldRegex.test(part)) {
-                 return <strong key={i} className="text-[#faecc4]">{part.slice(2, -2)}</strong>;
-            }
-            return <span key={i}>{part}</span>;
-        });
-    };
+    return parts.map((part, i) => {
+        if (sectionPattern.test(part)) {
+            const sectionNumber = part.match(/(\d+(\.\d+)?)/)[0];
+            return (
+                <SectionLink key={i} number={sectionNumber} onLinkClick={onSectionLinkClick}>
+                    {part}
+                </SectionLink>
+            );
+        }
+        if (caseLawPattern.test(part)) {
+            const caseName = part.slice(1, -1);
+            return (
+                <span key={i} className="inline-flex items-center gap-2">
+                    <em className="font-semibold">{caseName}</em>
+                    <button
+                        onClick={(e) => {
+                            e.stopPropagation();
+                            if (typeof onLegalLinkClick === 'function') {
+                                onLegalLinkClick(caseName);
+                            }
+                        }}
+                        className="bg-purple-600 hover:bg-purple-700 text-white font-semibold px-2 py-0.5 rounded-md text-xs inline-flex items-center gap-1"
+                    >
+                        <Search size={12} />
+                        View References
+                    </button>
+                </span>
+            );
+        }
+        if (boldPattern.test(part)) {
+             return <strong key={i} className="text-[#faecc4]">{part.slice(2, -2)}</strong>;
+        }
+        return <span key={i}>{part}</span>;
+    });
+};
 
     if (!content) return null;
 
