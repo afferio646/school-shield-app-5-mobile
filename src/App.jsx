@@ -41,96 +41,88 @@ function SectionLink({ number, onLinkClick, children }) {
 
 // --- AIContentRenderer ---
 function AIContentRenderer({ content, onSectionLinkClick, onLegalLinkClick, openOptions, onOptionToggle }) {
-   const renderTextWithLinks = (text) => {
-    if (typeof text !== 'string') return text;
+    // This is the helper function that turns plain text into interactive links.
+    const renderTextWithLinks = (text) => {
+        if (typeof text !== 'string') return text;
 
-    // Corrected regular expressions to prevent duplicate capturing
-    const sectionPattern = /(Section\s\d+(?:\.\d+)?)/;
-    const caseLawPattern = /(\*[^*]+\sv\.\s[^*]+\*)/;
-    const boldPattern = /(\*\*.*?\*\*)/;
+        const sectionPattern = /(Section\s\d+(?:\.\d+)?)/;
+        const caseLawPattern = /(\*[^*]+\sv\.\s[^*]+\*)/;
+        const boldPattern = /(\*\*.*?\*\*)/;
 
-    const combinedRegex = new RegExp(`(${sectionPattern.source}|${caseLawPattern.source}|${boldPattern.source})`, 'g');
+        const combinedRegex = new RegExp(`(${sectionPattern.source}|${caseLawPattern.source}|${boldPattern.source})`, 'g');
 
-    const parts = text.split(combinedRegex).filter(Boolean);
+        const parts = text.split(combinedRegex).filter(Boolean);
 
-    return parts.map((part, i) => {
-        if (sectionPattern.test(part)) {
-            const sectionNumber = part.match(/(\d+(\.\d+)?)/)[0];
-            return (
-                <SectionLink key={i} number={sectionNumber} onLinkClick={onSectionLinkClick}>
-                    {part}
-                </SectionLink>
-            );
-        }
-        if (caseLawPattern.test(part)) {
-            const caseName = part.slice(1, -1);
-            return (
-                <span key={i} className="inline-flex items-center gap-2">
-                    <em className="font-semibold">{caseName}</em>
-                    <button
-                        onClick={(e) => {
-                            e.stopPropagation();
-                            if (typeof onLegalLinkClick === 'function') {
-                                onLegalLinkClick(caseName);
-                            }
-                        }}
-                        className="bg-purple-600 hover:bg-purple-700 text-white font-semibold px-2 py-0.5 rounded-md text-xs inline-flex items-center gap-1"
-                    >
-                        <Search size={12} />
-                        View References
-                    </button>
-                </span>
-            );
-        }
-        if (boldPattern.test(part)) {
-             return <strong key={i} className="text-[#faecc4]">{part.slice(2, -2)}</strong>;
-        }
-        return <span key={i}>{part}</span>;
-    });
-};
+        return parts.map((part, i) => {
+            if (new RegExp(sectionPattern.source).test(part)) {
+                const sectionNumber = part.match(/(\d+(\.\d+)?)/)[0];
+                return (
+                    <SectionLink key={i} number={sectionNumber} onLinkClick={onSectionLinkClick}>
+                        {part}
+                    </SectionLink>
+                );
+            }
+            if (new RegExp(caseLawPattern.source).test(part)) {
+                const caseName = part.slice(1, -1);
+                return (
+                    <span key={i} className="inline-flex items-center gap-2">
+                        <em className="font-semibold">{caseName}</em>
+                        <button
+                            onClick={(e) => {
+                                e.stopPropagation();
+                                if (typeof onLegalLinkClick === 'function') {
+                                    onLegalLinkClick(caseName);
+                                }
+                            }}
+                            className="bg-purple-600 hover:bg-purple-700 text-white font-semibold px-2 py-0.5 rounded-md text-xs inline-flex items-center gap-1"
+                        >
+                            <Search size={12} />
+                            View References
+                        </button>
+                    </span>
+                );
+            }
+            if (new RegExp(boldPattern.source).test(part)) {
+                 return <strong key={i} className="text-[#faecc4]">{part.slice(2, -2)}</strong>;
+            }
+            return <span key={i}>{part}</span>;
+        });
+    };
 
-    if (!content) return null;
+    // --- Main Renderer Logic ---
 
+    // If content is a simple string, render it with links.
+    if (typeof content === 'string') {
+        const lines = content.split('\n').filter(line => line.trim() !== '');
+        return (
+            <div className="text-white space-y-2">
+                {lines.map((line, index) => <p key={index}>{renderTextWithLinks(line)}</p>)}
+            </div>
+        );
+    }
+    
+    // If it's already a React element (like from the demo scenarios), render it directly to prevent re-processing.
     if (React.isValidElement(content)) {
-        if (content.type === React.Fragment && content.props.children) {
-             const children = React.Children.toArray(content.props.children);
-             return (
-                 <>
-                    {children.map((child, index) => {
-                         if (child.type === ExpandableOption) {
-                             const optionKey = `option${String.fromCharCode(65 + index)}`;
-                             return React.cloneElement(child, {
-                                 key: optionKey,
-                                 isOpen: !!openOptions[optionKey],
-                                 onToggle: () => onOptionToggle(optionKey),
-                                 children: React.Children.map(child.props.children, innerChild => {
-                                     if(React.isValidElement(innerChild) && innerChild.props.children) {
-                                         return <AIContentRenderer content={innerChild.props.children} onSectionLinkClick={onSectionLinkClick} onLegalLinkClick={onLegalLinkClick} />
-                                     }
-                                     return innerChild;
-                                 })
-                             });
-                         }
-                         return child;
-                     })}
-                 </>
-             );
-        }
         return content;
     }
 
+    // If it's an array, map over it and render each item.
     if (Array.isArray(content)) {
+        // Handle array of {header, text} objects (Steps 1-3)
         if (content.length > 0 && typeof content[0] === 'object' && content[0] !== null && 'header' in content[0]) {
             return (
                 <div className="text-white space-y-2">
                     {content.map((item, index) => (
                         <p key={index} className="whitespace-pre-line">
-                            <strong className="text-[#faecc4]">{item.header}</strong> {renderTextWithLinks(item.text)}
+                            <strong className="text-[#faecc4]">{item.header}</strong>
+                            {/* Render the text part, which might contain links */}
+                            <AIContentRenderer content={item.text} onSectionLinkClick={onSectionLinkClick} onLegalLinkClick={onLegalLinkClick} />
                         </p>
                     ))}
                 </div>
             );
         }
+        // Handle simple array of strings (like implementation steps)
         return (
             <div className="text-white space-y-2">
                 {content.map((item, index) => <p key={index}>{renderTextWithLinks(String(item))}</p>)}
@@ -138,7 +130,9 @@ function AIContentRenderer({ content, onSectionLinkClick, onLegalLinkClick, open
         );
     }
 
+    // If it's an object, determine its structure and render accordingly.
     if (typeof content === 'object' && content !== null) {
+        // Handle Step 6 structure
         if (content.recommendationSummary && content.implementationSteps) {
             return (
                 <div className="space-y-4">
@@ -153,33 +147,40 @@ function AIContentRenderer({ content, onSectionLinkClick, onLegalLinkClick, open
             );
         }
 
-        if (content.optionA && content.optionB && content.optionC) {
+        // Handle Steps 4 & 5 structure (options)
+        if (content.optionA || content.optionB || content.optionC) {
              return (
                 <div className="text-white">
-                    {Object.entries(content).map(([key, option]) => (
-                         <ExpandableOption
-                            key={key}
-                            title={option.title}
-                            isOpen={!!openOptions[key]}
-                            onToggle={() => onOptionToggle(key)}
-                         >
-                            <AIContentRenderer
-                                content={option}
-                                onSectionLinkClick={onSectionLinkClick}
-                                onLegalLinkClick={onLegalLinkClick}
-                            />
-                        </ExpandableOption>
-                    ))}
+                    {Object.entries(content).map(([key, option]) => {
+                         if (key.startsWith('option') && typeof option === 'object' && option !== null) {
+                            return (
+                                 <ExpandableOption
+                                    key={key}
+                                    title={option.title}
+                                    isOpen={!!openOptions[key]}
+                                    onToggle={() => onOptionToggle(key)}
+                                 >
+                                    <AIContentRenderer
+                                        content={option}
+                                        onSectionLinkClick={onSectionLinkClick}
+                                        onLegalLinkClick={onLegalLinkClick}
+                                    />
+                                </ExpandableOption>
+                            );
+                         }
+                         return null;
+                    })}
                 </div>
             );
         }
-
+        
+        // Handle generic objects (like the inside of an option)
         return (
             <div className="space-y-3 text-white">
                 {Object.entries(content).map(([prop, val]) => {
-                    if (prop === 'title') return null;
+                    if (prop === 'title') return null; // Don't render the title again inside the expandable
                     const formattedProp = prop.charAt(0).toUpperCase() + prop.slice(1).replace(/([A-Z])/g, ' $1');
-
+                    
                     if (prop === 'suggestedLanguage') {
                         return (
                             <div key={prop} className="mt-2">
@@ -200,7 +201,9 @@ function AIContentRenderer({ content, onSectionLinkClick, onLegalLinkClick, open
             </div>
         );
     }
-
+    
+    return null;
+}
     const lines = String(content).split('\n').filter(line => line.trim() !== '');
     return (
         <div className="text-white space-y-2">
