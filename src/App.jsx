@@ -39,64 +39,77 @@ function SectionLink({ number, onLinkClick, children }) {
     );
 }
 
+function LegalLink({ name, isCase, onLegalLinkClick }) {
+    return (
+        <span className="inline-flex items-center gap-2">
+            {isCase ? <em className="font-semibold">{name}</em> : <strong className="font-semibold">{name}</strong>}
+            <button
+                onClick={(e) => { e.stopPropagation(); onLegalLinkClick(name); }}
+                className="bg-purple-600 hover:bg-purple-700 text-white font-semibold px-2 py-0.5 rounded-md text-xs inline-flex items-center gap-1"
+            >
+                <Search size={12} /> View References
+            </button>
+        </span>
+    );
+}
 // --- AIContentRenderer ---
 
 function ParsedContent({ text, onSectionLinkClick, onLegalLinkClick }) {
-    // If the content is not a string (i.e., it's already a React element from a demo),
-    // return it directly without trying to process it again.
-    if (typeof text !== 'string') {
-        return text;
-    }
+    if (typeof text !== 'string') {
+        return text;
+    }
 
-    // 1. Define the patterns as simple strings first to avoid nested capture groups.
-    const sectionSrc = 'Section\\s\\d+(?:\\.\\d+)?';
-    const caseLawSrc = '\\*[^*]+\\s?v\\.\\s?[^*]+\\*';
-    const boldSrc = '\\*\\*.*?\\*\\*';
+    // Define patterns for parsing
+    const sectionSrc = 'Section\\s\\d+(?:\\.\\d+)?';
+    const caseLawSrc = '\\*[^*]+\\s?v\\.\\s?[^*]+\\*'; // Finds *Case v. Name*
+    // New, more specific pattern for statutes (looks for words like Title, Act, etc.)
+    const statuteSrc = '\\*\\*(Title \\w+|[\\w\\s]+? (Act|Code|Statute|Amendments) of \\d{4})\\*\\*';
+    // Generic bold pattern (for text that is NOT a statute)
+    const boldSrc = '\\*\\*.*?\\*\\*';
 
-    // 2. Create the combined regex for splitting. This has only ONE capture group around the whole thing.
-    const combinedRegex = new RegExp(`(${sectionSrc}|${caseLawSrc}|${boldSrc})`, 'g');
+    // The order is important: specific patterns (like statute) must come before general ones (like bold).
+    const combinedRegex = new RegExp(`(${sectionSrc}|${caseLawSrc}|${statuteSrc}|${boldSrc})`, 'g');
 
-    // 3. Create individual regexes for testing each part.
-    // Using ^ (start) and $ (end) ensures we match the entire part, which is more robust.
-    const sectionRegex = new RegExp(`^${sectionSrc}$`);
-    const caseLawRegex = new RegExp(`^${caseLawSrc}$`);
-    const boldRegex = new RegExp(`^${boldSrc}$`);
+    // Individual regexes for testing each part
+    const sectionRegex = new RegExp(`^${sectionSrc}$`);
+    const caseLawRegex = new RegExp(`^${caseLawSrc}$`);
+    const statuteRegex = new RegExp(`^${statuteSrc}$`);
+    const boldRegex = new RegExp(`^${boldSrc}$`);
 
-    // This split will now work correctly without creating duplicates in the 'parts' array.
-    const parts = text.split(combinedRegex).filter(Boolean);
+    const parts = text.split(combinedRegex).filter(Boolean);
 
-    return (
-        <>
-            {parts.map((part, i) => {
-                if (sectionRegex.test(part)) {
-                    const sectionNumber = part.match(/(\d+(\.\d+)?)/)[0];
-                    return (
-                        <SectionLink key={i} number={sectionNumber} onLinkClick={onSectionLinkClick}>
-                            {part}
-                        </SectionLink>
-                    );
-                }
-                if (caseLawRegex.test(part)) {
-                    const caseName = part.slice(1, -1);
-                    return (
-                        <span key={i} className="inline-flex items-center gap-2">
-                            <em className="font-semibold">{caseName}</em>
-                            <button
-           D                     onClick={(e) => { e.stopPropagation(); onLegalLinkClick(caseName); }}
-                                className="bg-purple-600 hover:bg-purple-700 text-white font-semibold px-2 py-0.5 rounded-md text-xs inline-flex items-center gap-1"
-                            >
-                                <Search size={12} /> View References
-                            </button>
-                        </span>
-                    );
-                }
-                if (boldRegex.test(part)) {
-                    return <strong key={i} className="text-[#faecc4]">{part.slice(2, -2)}</strong>;
-                }
-                return <span key={i}>{part}</span>;
-            })}
-        </>
-    );
+    return (
+        <>
+            {parts.map((part, i) => {
+                if (sectionRegex.test(part)) {
+                    const sectionNumber = part.match(/(\d+(\.\d+)?)/)[0];
+                    return (
+                        <SectionLink key={i} number={sectionNumber} onLinkClick={onSectionLinkClick}>
+                            {part}
+                        </SectionLink>
+                    );
+                }
+                
+                if (caseLawRegex.test(part)) {
+                    const caseName = part.slice(1, -1);
+                    return <LegalLink key={i} name={caseName} isCase={true} onLegalLinkClick={onLegalLinkClick} />;
+                }
+
+                // New block to handle statutes
+                if (statuteRegex.test(part)) {
+                    const statuteName = part.slice(2, -2);
+                    return <LegalLink key={i} name={statuteName} isCase={false} onLegalLinkClick={onLegalLinkClick} />;
+                }
+
+                if (boldRegex.test(part)) {
+                    // This now only catches regular bold text that isn't a recognized statute
+                    return <strong key={i} className="text-[#faecc4]">{part.slice(2, -2)}</strong>;
+                }
+                
+                return <span key={i}>{part}</span>;
+            })}
+        </>
+    );
 }
 
 // Component 2: Handles the structure of the AI response and tells ParsedContent what to render.
@@ -705,9 +718,9 @@ function RiskAssessmentCenter({ handbookText, apiKey, handbookSectionLanguage, o
         1.  Your entire response MUST be only the populated JSON object. No other text.
         2.  For 'legalReference', you MUST follow this **three-step internal process**:
             **Step A: Identify Legal Concepts and relevant Keywords used in the issue or complaint.** First, analyze the 'User-Provided Scenario' and then identify the core legal concepts involved using the keywords relevant to the complaint or issue (e.g., 'pay equity,' 'at-will employment,' 'constructive discharge,' 'harassment.')
-            **Step B: Find a School-Specific Case.** Second, find a real, verifiable court case from a **K-12 public or independent school context** that deals with the specific concepts, including the keywords relevant to Step A. Your search should prioritize and use sources, including but not limited to, Justia, Casetext, Westlaw, FindLaw, Fastcase, CourtListener, and the Legal Information Institute, and relevant verified case law found on search engines. Do not provide case law references that do not match the exact complaint or concept.
-            **Step C: Justify and Format the Selection.** Third, in your final output, you **MUST format the case name in italics by wrapping it in asterisks** (e.g., *Case Name v. Defendant*), followed by a concise explanation that explicitly connects the legal principle to the complaint or issue. 
-            **Fallback Rule:** If, and only if, you cannot find a relevant school-specific case after this process, you MUST state, "No direct K-12 case law was found for this specific issue." Then, cite the controlling federal or state **statute** (e.g., Title IX, Title VII, Equal Pay Act) and reference and present those statutes in the same way as a citation. Include an explanation of its application to schools. Providing irrelevant or non-school-related case law is an absolute failure and not allowed.
+            **Step B: Find a School-Specific Case or Statute.** Second, find a real, verifiable court case from a **K-12 public or independent school context** OR a controlling federal/state statute that deals with the concepts from Step A. Your search should prioritize sources like Justia, Casetext, Westlaw, and the Legal Information Institute.
+            **Step C: Justify and Format the Selection.** Third, in your final output, you **MUST format the case name in italics by wrapping it in single asterisks** (e.g., *Case Name v. Defendant*) OR **format the statute name in bold by wrapping it in double asterisks** (e.g., **Title IX of the Education Amendments of 1972**), followed by a concise explanation that explicitly connects the legal principle to the complaint or issue.
+            **Fallback Rule:** If you cannot find a relevant school-specific case or statute, you MUST state, "No direct K-12 case law was found for this specific issue." and cite the relevant general legal principle. Providing irrelevant references is an absolute failure.
         3.  For 'suggestedLanguage' in Step 4, you MUST provide a full, robust paragraph of professional language suitable for a Head of School to use. Do not use single sentences.
         4.  The output must be as detailed and robust as a professional consultant's report. Do not use placeholder text. Every field must be filled with comprehensive, scenario-specific information.
         5.  When referencing a handbook policy, use the format "Section X.Y". The user interface will automatically link this text.
