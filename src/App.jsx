@@ -40,57 +40,63 @@ function SectionLink({ number, onLinkClick, children }) {
 }
 
 // --- AIContentRenderer ---
-// --- NEW, CORRECTED CONTENT RENDERER ---
-// This new structure permanently fixes the duplicate link bug.
 
-// Component 1: Handles parsing and rendering of raw text strings with links.
-// Its only job is to turn text into interactive content.
 function ParsedContent({ text, onSectionLinkClick, onLegalLinkClick }) {
-    // If the content is not a string (i.e., it's already a React element from a demo),
-    // return it directly without trying to process it again. This is the key to the fix.
-    if (typeof text !== 'string') {
-        return text;
-    }
+    // If the content is not a string (i.e., it's already a React element from a demo),
+    // return it directly without trying to process it again.
+    if (typeof text !== 'string') {
+        return text;
+    }
 
-    const sectionPattern = /(Section\s\d+(?:\.\d+)?)/g;
-    const caseLawPattern = /(\*[^*]+\sv\.\s[^*]+\*)/g;
-    const boldPattern = /(\*\*.*?\*\*)/g;
+    // 1. Define the patterns as simple strings first to avoid nested capture groups.
+    const sectionSrc = 'Section\\s\\d+(?:\\.\\d+)?';
+    const caseLawSrc = '\\*[^*]+\\s?v\\.\\s?[^*]+\\*';
+    const boldSrc = '\\*\\*.*?\\*\\*';
 
-    const combinedRegex = new RegExp(`(${sectionPattern.source}|${caseLawPattern.source}|${boldPattern.source})`, 'g');
-    const parts = text.split(combinedRegex).filter(Boolean);
+    // 2. Create the combined regex for splitting. This has only ONE capture group around the whole thing.
+    const combinedRegex = new RegExp(`(${sectionSrc}|${caseLawSrc}|${boldSrc})`, 'g');
 
-    return (
-        <>
-            {parts.map((part, i) => {
-                if (sectionPattern.test(part)) {
-                    const sectionNumber = part.match(/(\d+(\.\d+)?)/)[0];
-                    return (
-                        <SectionLink key={i} number={sectionNumber} onLinkClick={onSectionLinkClick}>
-                            {part}
-                        </SectionLink>
-                    );
-                }
-                if (caseLawPattern.test(part)) {
-                    const caseName = part.slice(1, -1);
-                    return (
-                        <span key={i} className="inline-flex items-center gap-2">
-                            <em className="font-semibold">{caseName}</em>
-                            <button
-                                onClick={(e) => { e.stopPropagation(); onLegalLinkClick(caseName); }}
-                                className="bg-purple-600 hover:bg-purple-700 text-white font-semibold px-2 py-0.5 rounded-md text-xs inline-flex items-center gap-1"
-                            >
-                                <Search size={12} /> View References
-                            </button>
-                        </span>
-                    );
-                }
-                if (boldPattern.test(part)) {
-                    return <strong key={i} className="text-[#faecc4]">{part.slice(2, -2)}</strong>;
-                }
-                return <span key={i}>{part}</span>;
-            })}
-        </>
-    );
+    // 3. Create individual regexes for testing each part.
+    // Using ^ (start) and $ (end) ensures we match the entire part, which is more robust.
+    const sectionRegex = new RegExp(`^${sectionSrc}$`);
+    const caseLawRegex = new RegExp(`^${caseLawSrc}$`);
+    const boldRegex = new RegExp(`^${boldSrc}$`);
+
+    // This split will now work correctly without creating duplicates in the 'parts' array.
+    const parts = text.split(combinedRegex).filter(Boolean);
+
+    return (
+        <>
+            {parts.map((part, i) => {
+                if (sectionRegex.test(part)) {
+                    const sectionNumber = part.match(/(\d+(\.\d+)?)/)[0];
+                    return (
+                        <SectionLink key={i} number={sectionNumber} onLinkClick={onSectionLinkClick}>
+                            {part}
+                        </SectionLink>
+                    );
+                }
+                if (caseLawRegex.test(part)) {
+                    const caseName = part.slice(1, -1);
+                    return (
+                        <span key={i} className="inline-flex items-center gap-2">
+                            <em className="font-semibold">{caseName}</em>
+                            <button
+           D                     onClick={(e) => { e.stopPropagation(); onLegalLinkClick(caseName); }}
+                                className="bg-purple-600 hover:bg-purple-700 text-white font-semibold px-2 py-0.5 rounded-md text-xs inline-flex items-center gap-1"
+                            >
+                                <Search size={12} /> View References
+                            </button>
+                        </span>
+                    );
+                }
+                if (boldRegex.test(part)) {
+                    return <strong key={i} className="text-[#faecc4]">{part.slice(2, -2)}</strong>;
+                }
+                return <span key={i}>{part}</span>;
+            })}
+        </>
+    );
 }
 
 // Component 2: Handles the structure of the AI response and tells ParsedContent what to render.
