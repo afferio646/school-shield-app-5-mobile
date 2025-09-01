@@ -655,167 +655,168 @@ function RiskAssessmentCenter({ handbookText, apiKey, handbookSectionLanguage, o
         setSelectedScenarioKey(scenarioKey);
     };
 
-    const handleGenerate = async (isUpdate = false) => {
-        if (!issue) return;
+   const handleGenerate = async (isUpdate = false) => {
+    if (!issue) return;
 
-        setLoading(true);
-        setActiveLoader(isUpdate ? 'update' : 'new');
-        if (!isUpdate) {
-            setResponseGenerated(false);
-            setGeneratedSteps(null);
-            setOpenSteps({});
-            setOpenSubOptions({}); // Reset sub-option memory
+    setLoading(true);
+    setActiveLoader(isUpdate ? 'update' : 'new');
+    if (!isUpdate) {
+        setResponseGenerated(false);
+        setGeneratedSteps(null);
+        setOpenSteps({});
+        setOpenSubOptions({}); // Reset sub-option memory
+    }
+    setFallbackMessage("");
+
+    if (viewMode === 'demo') {
+        await new Promise(resolve => setTimeout(resolve, 2000));
+        if (selectedScenarioKey && scenarios[selectedScenarioKey]) {
+            setGeneratedSteps(scenarios[selectedScenarioKey]);
+        } else {
+            setGeneratedSteps({ error: "Could not find demo scenario." });
         }
-        setFallbackMessage("");
+        setResponseGenerated(true);
+        setLoading(false);
+        setActiveLoader(null);
+        return;
+    }
 
-        if (viewMode === 'demo') {
-            await new Promise(resolve => setTimeout(resolve, 2000));
-            if (selectedScenarioKey && scenarios[selectedScenarioKey]) {
-                setGeneratedSteps(scenarios[selectedScenarioKey]);
-            } else {
-                setGeneratedSteps({ error: "Could not find demo scenario." });
-            }
-            setResponseGenerated(true);
-            setLoading(false);
-            setActiveLoader(null);
-            return;
-        }
+    setViewMode('live');
+    if (!apiKey || apiKey === "YOUR_API_KEY_HERE") {
+        setGeneratedSteps({ error: "API key is not configured. Please add your API key to the App.jsx file." });
+        setResponseGenerated(true);
+        setLoading(false);
+        setActiveLoader(null);
+        return;
+    }
 
-        setViewMode('live');
-        if (!apiKey) {
-            setGeneratedSteps({ error: "API key is not configured. Please set the REACT_APP_GEMINI_API_KEY environment variable." });
-            setResponseGenerated(true);
-            setLoading(false);
-            setActiveLoader(null);
-            return;
-        }
+    const sourceMaterials = handbookText;
 
-        const sourceMaterials = handbookText;
+    const prompt = `
+        Role: You are an expert K-12 risk assessment analyst and legal advisor. Your function is to analyze a scenario and populate a JSON object based on provided source materials. Your tone is professional, clear, and authoritative. Your analysis must be robust and detailed, mirroring the complexity of a real-world legal and administrative consultation for a school leader.
+        Task: Read the User-Provided Scenario and the Source Materials. Populate a JSON object that strictly follows the provided schema.
+        CRITICAL RULES:
+        1.  Your entire response MUST be only the populated JSON object. No other text.
+        2.  For 'legalReference' in Steps 4 and 5, you MUST provide real, verifiable court cases relevant to the educational or employment context. For each case, provide the name in italics (e.g., *Tinker v. Des Moines Indep. Cmty. Sch. Dist.*) and a concise sentence explaining its relevance to the specific option being discussed. THIS IS NON-NEGOTIABLE.
+        3.  For 'suggestedLanguage' in Step 4, you MUST provide a full, robust paragraph of professional language suitable for a Head of School to use. Do not use single sentences.
+        4.  The output must be as detailed and robust as a professional consultant's report. Do not use placeholder text. Every field must be filled with comprehensive, scenario-specific information.
+        5.  When referencing a handbook policy, use the format "Section X.Y". The user interface will automatically link this text.
+        6.  **For Steps 1, 2, 3:** The 'content' MUST be an array of objects, each with a 'header' key (e.g., "Issue Type:") and a 'text' key (e.g., "Parent Complaint").
+        7.  **For Step 4 & 5:** The 'content' must be an object with keys "optionA", "optionB", "optionC". Each option must be an object with its own title and various text properties. The projected reactions in Step 5 must be nuanced and explain potential consequences.
+        8.  **For Step 6:** The 'recommendationSummary' MUST be a string formatted with bolded headers like this: "**Recommended Option:** [Option]\\n**Why:** [Explanation]\\n**Confidence Level:** [Level]\\n**Legal Review Advised:** [Yes/No and when]". The 'implementationSteps' MUST be a clear, actionable checklist as an array of strings, with each string being a complete sentence for a single step, prefixed with its number (e.g., "1. Do this first.").
+        9.  **NEW CRITICAL RULE:** When you find a handbook policy in the source material like "2.4 Non-Discrimination and Harassment", your response MUST ONLY use the section number format (e.g., "Section 2.4"). DO NOT include the policy title (like "Non-Discrimination and Harassment") or repeat the section number in your output.
+        --- START OF SOURCE MATERIALS ---
+        ${sourceMaterials}
+        --- END OF SOURCE MATERIALS ---
+        User-Provided Scenario: "${issue}"
+    `;
 
-        const prompt = `
-            Role: You are an expert K-12 risk assessment analyst and legal advisor. Your function is to analyze a scenario and populate a JSON object based on provided source materials. Your tone is professional, clear, and authoritative. Your analysis must be robust and detailed, mirroring the complexity of a real-world legal and administrative consultation for a school leader.
-            Task: Read the User-Provided Scenario and the Source Materials. Populate a JSON object that strictly follows the provided schema.
-            CRITICAL RULES:
-            1.  Your entire response MUST be only the populated JSON object. No other text.
-            2.  For 'legalReference' in Steps 4 and 5, you MUST provide real, verifiable court cases relevant to the educational or employment context. For each case, provide the name in italics (e.g., *Tinker v. Des Moines Indep. Cmty. Sch. Dist.*) and a concise sentence explaining its relevance to the specific option being discussed. THIS IS NON-NEGOTIABLE.
-            3.  For 'suggestedLanguage' in Step 4, you MUST provide a full, robust paragraph of professional language suitable for a Head of School to use. Do not use single sentences.
-            4.  The output must be as detailed and robust as a professional consultant's report. Do not use placeholder text. Every field must be filled with comprehensive, scenario-specific information.
-            5.  When referencing a handbook policy, use the format "Section X.Y". The user interface will automatically link this text.
-            6.  **For Steps 1, 2, 3:** The 'content' MUST be an array of objects, each with a 'header' key (e.g., "Issue Type:") and a 'text' key (e.g., "Parent Complaint").
-            7.  **For Step 4 & 5:** The 'content' must be an object with keys "optionA", "optionB", "optionC". Each option must be an object with its own title and various text properties. The projected reactions in Step 5 must be nuanced and explain potential consequences.
-            8.  **For Step 6:** The 'recommendationSummary' MUST be a string formatted with bolded headers like this: "**Recommended Option:** [Option]\\n**Why:** [Explanation]\\n**Confidence Level:** [Level]\\n**Legal Review Advised:** [Yes/No and when]". The 'implementationSteps' MUST be a clear, actionable checklist as an array of strings, with each string being a complete sentence for a single step, prefixed with its number (e.g., "1. Do this first.").
-            --- START OF SOURCE MATERIALS ---
-            ${sourceMaterials}
-            --- END OF SOURCE MATERIALS ---
-            User-Provided Scenario: "${issue}"
-        `;
-
-        const responseSchema = {
-            type: "OBJECT",
-            properties: {
-                "step1": { type: "OBJECT", properties: { "title": { "type": "STRING" }, "content": { type: "ARRAY", items: { type: "OBJECT", properties: { "header": { "type": "STRING" }, "text": { "type": "STRING" } }, required: ["header", "text"] } } }, required: ["title", "content"] },
-                "step2": { type: "OBJECT", properties: { "title": { "type": "STRING" }, "content": { type: "ARRAY", items: { type: "OBJECT", properties: { "header": { "type": "STRING" }, "text": { "type": "STRING" } }, required: ["header", "text"] } } }, required: ["title", "content"] },
-                "step3": { type: "OBJECT", properties: { "title": { "type": "STRING" }, "content": { type: "ARRAY", items: { type: "OBJECT", properties: { "header": { "type": "STRING" }, "text": { "type": "STRING" } }, required: ["header", "text"] } } }, required: ["title", "content"] },
-                "step4": {
-                    type: "OBJECT",
-                    properties: {
-                        "title": { "type": "STRING" },
-                        "content": {
-                            type: "OBJECT",
-                            properties: {
-                                "optionA": { type: "OBJECT", properties: { "title": { "type": "STRING" }, "suggestedLanguage": { "type": "STRING" }, "policyMatch": { "type": "STRING" }, "riskScore": { "type": "STRING" }, "legalReference": { "type": "STRING" }, "recommendation": { "type": "STRING" } }, required: ["title", "suggestedLanguage", "policyMatch", "riskScore", "legalReference", "recommendation"] },
-                                "optionB": { type: "OBJECT", properties: { "title": { "type": "STRING" }, "suggestedLanguage": { "type": "STRING" }, "policyMatch": { "type": "STRING" }, "riskScore": { "type": "STRING" }, "legalReference": { "type": "STRING" }, "recommendation": { "type": "STRING" } }, required: ["title", "suggestedLanguage", "policyMatch", "riskScore", "legalReference", "recommendation"] },
-                                "optionC": { type: "OBJECT", properties: { "title": { "type": "STRING" }, "suggestedLanguage": { "type": "STRING" }, "policyMatch": { "type": "STRING" }, "riskScore": { "type": "STRING" }, "legalReference": { "type": "STRING" }, "recommendation": { "type": "STRING" } }, required: ["title", "suggestedLanguage", "policyMatch", "riskScore", "legalReference", "recommendation"] }
-                            },
-                            required: ["optionA", "optionB", "optionC"]
-                        }
-                    },
-                    required: ["title", "content"]
+    const responseSchema = {
+        type: "OBJECT",
+        properties: {
+            "step1": { type: "OBJECT", properties: { "title": { "type": "STRING" }, "content": { type: "ARRAY", items: { type: "OBJECT", properties: { "header": { "type": "STRING" }, "text": { "type": "STRING" } }, required: ["header", "text"] } } }, required: ["title", "content"] },
+            "step2": { type: "OBJECT", properties: { "title": { "type": "STRING" }, "content": { type: "ARRAY", items: { type: "OBJECT", properties: { "header": { "type": "STRING" }, "text": { "type": "STRING" } }, required: ["header", "text"] } } }, required: ["title", "content"] },
+            "step3": { type: "OBJECT", properties: { "title": { "type": "STRING" }, "content": { type: "ARRAY", items: { type: "OBJECT", properties: { "header": { "type": "STRING" }, "text": { "type": "STRING" } }, required: ["header", "text"] } } }, required: ["title", "content"] },
+            "step4": {
+                type: "OBJECT",
+                properties: {
+                    "title": { "type": "STRING" },
+                    "content": {
+                        type: "OBJECT",
+                        properties: {
+                            "optionA": { type: "OBJECT", properties: { "title": { "type": "STRING" }, "suggestedLanguage": { "type": "STRING" }, "policyMatch": { "type": "STRING" }, "riskScore": { "type": "STRING" }, "legalReference": { "type": "STRING" }, "recommendation": { "type": "STRING" } }, required: ["title", "suggestedLanguage", "policyMatch", "riskScore", "legalReference", "recommendation"] },
+                            "optionB": { type: "OBJECT", properties: { "title": { "type": "STRING" }, "suggestedLanguage": { "type": "STRING" }, "policyMatch": { "type": "STRING" }, "riskScore": { "type": "STRING" }, "legalReference": { "type": "STRING" }, "recommendation": { "type": "STRING" } }, required: ["title", "suggestedLanguage", "policyMatch", "riskScore", "legalReference", "recommendation"] },
+                            "optionC": { type: "OBJECT", properties: { "title": { "type": "STRING" }, "suggestedLanguage": { "type": "STRING" }, "policyMatch": { "type": "STRING" }, "riskScore": { "type": "STRING" }, "legalReference": { "type": "STRING" }, "recommendation": { "type": "STRING" } }, required: ["title", "suggestedLanguage", "policyMatch", "riskScore", "legalReference", "recommendation"] }
+                        },
+                        required: ["optionA", "optionB", "optionC"]
+                    }
                 },
-                "step5": {
-                    type: "OBJECT",
-                    properties: {
-                        "title": { "type": "STRING" },
-                        "content": {
-                            type: "OBJECT",
-                            properties: {
-                                "optionA": { type: "OBJECT", properties: { "title": { "type": "STRING" }, "likelyResponse": { "type": "STRING" }, "schoolRisk": { "type": "STRING" }, "legalReference": { "type": "STRING" } }, required: ["title", "likelyResponse", "schoolRisk", "legalReference"] },
-                                "optionB": { type: "OBJECT", properties: { "title": { "type": "STRING" }, "likelyResponse": { "type": "STRING" }, "schoolRisk": { "type": "STRING" }, "legalReference": { "type": "STRING" } }, required: ["title", "likelyResponse", "schoolRisk", "legalReference"] },
-                                "optionC": { type: "OBJECT", properties: { "title": { "type": "STRING" }, "likelyResponse": { "type": "STRING" }, "schoolRisk": { "type": "STRING" }, "legalReference": { "type": "STRING" } }, required: ["title", "likelyResponse", "schoolRisk", "legalReference"] }
-                            },
-                            required: ["optionA", "optionB", "optionC"]
-                        }
-                    },
-                    required: ["title", "content"]
-                },
-                "step6": {
-                    type: "OBJECT",
-                    properties: {
-                        "title": { "type": "STRING" },
-                        "content": {
-                            type: "OBJECT",
-                            properties: {
-                                "recommendationSummary": { "type": "STRING" },
-                                "implementationSteps": { "type": "ARRAY", "items": { "type": "STRING" } }
-                            },
-                            required: ["recommendationSummary", "implementationSteps"]
-                        }
-                    },
-                    required: ["title", "content"]
-                }
+                required: ["title", "content"]
             },
-            required: ["step1", "step2", "step3", "step4", "step5", "step6"]
+            "step5": {
+                type: "OBJECT",
+                properties: {
+                    "title": { "type": "STRING" },
+                    "content": {
+                        type: "OBJECT",
+                        properties: {
+                            "optionA": { type: "OBJECT", properties: { "title": { "type": "STRING" }, "likelyResponse": { "type": "STRING" }, "schoolRisk": { "type": "STRING" }, "legalReference": { "type": "STRING" } }, required: ["title", "likelyResponse", "schoolRisk", "legalReference"] },
+                            "optionB": { type: "OBJECT", properties: { "title": { "type": "STRING" }, "likelyResponse": { "type": "STRING" }, "schoolRisk": { "type": "STRING" }, "legalReference": { "type": "STRING" } }, required: ["title", "likelyResponse", "schoolRisk", "legalReference"] },
+                            "optionC": { type: "OBJECT", properties: { "title": { "type": "STRING" }, "likelyResponse": { "type": "STRING" }, "schoolRisk": { "type": "STRING" }, "legalReference": { "type": "STRING" } }, required: ["title", "likelyResponse", "schoolRisk", "legalReference"] }
+                        },
+                        required: ["optionA", "optionB", "optionC"]
+                    }
+                },
+                required: ["title", "content"]
+            },
+            "step6": {
+                type: "OBJECT",
+                properties: {
+                    "title": { "type": "STRING" },
+                    "content": {
+                        type: "OBJECT",
+                        properties: {
+                            "recommendationSummary": { "type": "STRING" },
+                            "implementationSteps": { "type": "ARRAY", "items": { "type": "STRING" } }
+                        },
+                        required: ["recommendationSummary", "implementationSteps"]
+                    }
+                },
+                required: ["title", "content"]
+            }
+        },
+        required: ["step1", "step2", "step3", "step4", "step5", "step6"]
+    };
+
+    try {
+        const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-latest:generateContent?key=${apiKey}`;
+        const payload = {
+            contents: [{ role: "user", parts: [{ text: prompt }] }],
+            generationConfig: {
+                responseMimeType: "application/json",
+                responseSchema: responseSchema,
+                temperature: 0.2
+            }
         };
 
-        try {
-            const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-latest:generateContent?key=${apiKey}`;
-            const payload = {
-                contents: [{ role: "user", parts: [{ text: prompt }] }],
-                generationConfig: {
-                    responseMimeType: "application/json",
-                    responseSchema: responseSchema,
-                    temperature: 0.2
-                }
-            };
+        const response = await fetch(apiUrl, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+        });
 
-            const response = await fetch(apiUrl, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(payload)
-            });
-
-            if (response.status === 503) {
-                setFallbackMessage("The live AI model is temporarily unavailable. Displaying a pre-built demonstration scenario.");
-                const scenarioKey = 'parentComplaint'; // Default fallback
-                setGeneratedSteps(scenarios[scenarioKey]);
-                setViewMode('demo');
-                setResponseGenerated(true);
-                return;
-            }
-
-            if (!response.ok) {
-                const errorBody = await response.json();
-                throw new Error(`API request failed: ${response.status} - ${errorBody?.error?.message || 'Unknown error'}`);
-            }
-
-            const result = await response.json();
-            if (result.candidates && result.candidates[0].content && result.candidates[0].content.parts && result.candidates[0].content.parts.length > 0) {
-                const jsonText = result.candidates[0].content.parts[0].text;
-                const parsedSteps = JSON.parse(jsonText);
-                setGeneratedSteps(parsedSteps);
-                setResponseGenerated(true);
-            } else {
-                throw new Error("Invalid response structure from API.");
-            }
-        } catch (error) {
-            console.error("Error generating AI response:", error);
-            setGeneratedSteps({ error: `Failed to generate AI response. ${error.message}. Please check your API key and network connection.` });
+        if (response.status === 503) {
+            setFallbackMessage("The live AI model is temporarily unavailable. Displaying a pre-built demonstration scenario.");
+            const scenarioKey = 'parentComplaint'; // Default fallback
+            setGeneratedSteps(scenarios[scenarioKey]);
+            setViewMode('demo');
             setResponseGenerated(true);
-        } finally {
-            setLoading(false);
-            setActiveLoader(null);
+            return;
         }
-    };
+
+        if (!response.ok) {
+            const errorBody = await response.json();
+            throw new Error(`API request failed: ${response.status} - ${errorBody?.error?.message || 'Unknown error'}`);
+        }
+
+        const result = await response.json();
+        if (result.candidates && result.candidates[0].content && result.candidates[0].content.parts && result.candidates[0].content.parts.length > 0) {
+            const jsonText = result.candidates[0].content.parts[0].text;
+            const parsedSteps = JSON.parse(jsonText);
+            setGeneratedSteps(parsedSteps);
+            setResponseGenerated(true);
+        } else {
+            throw new Error("Invalid response structure from API.");
+        }
+    } catch (error) {
+        console.error("Error generating AI response:", error);
+        setGeneratedSteps({ error: `Failed to generate AI response. ${error.message}. Please check your API key and network connection.` });
+        setResponseGenerated(true);
+    } finally {
+        setLoading(false);
+        setActiveLoader(null);
+    }
+};
 
     const handleStepToggle = (stepKey) => {
         const isOpening = !openSteps[stepKey];
