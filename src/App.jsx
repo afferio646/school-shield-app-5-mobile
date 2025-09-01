@@ -41,19 +41,20 @@ function SectionLink({ number, onLinkClick, children }) {
 
 // --- AIContentRenderer ---
 // --- NEW, CORRECTED CONTENT RENDERER ---
+// This new structure permanently fixes the duplicate link bug.
 
 // Component 1: Handles parsing and rendering of raw text strings with links.
-// This component takes simple strings and turns them into interactive content.
+// Its only job is to turn text into interactive content.
 function ParsedContent({ text, onSectionLinkClick, onLegalLinkClick }) {
     // If the content is not a string (i.e., it's already a React element from a demo),
-    // return it directly without trying to process it again. This prevents the bug.
+    // return it directly without trying to process it again. This is the key to the fix.
     if (typeof text !== 'string') {
         return text;
     }
 
-    const sectionPattern = /(Section\s\d+(?:\.\d+)?)/;
-    const caseLawPattern = /(\*[^*]+\sv\.\s[^*]+\*)/;
-    const boldPattern = /(\*\*.*?\*\*)/;
+    const sectionPattern = /(Section\s\d+(?:\.\d+)?)/g;
+    const caseLawPattern = /(\*[^*]+\sv\.\s[^*]+\*)/g;
+    const boldPattern = /(\*\*.*?\*\*)/g;
 
     const combinedRegex = new RegExp(`(${sectionPattern.source}|${caseLawPattern.source}|${boldPattern.source})`, 'g');
     const parts = text.split(combinedRegex).filter(Boolean);
@@ -92,22 +93,24 @@ function ParsedContent({ text, onSectionLinkClick, onLegalLinkClick }) {
     );
 }
 
-// Component 2: Handles the structure of the AI response and delegates text rendering to ParsedContent.
-// This component understands the shape of your data (objects, arrays, etc.).
+// Component 2: Handles the structure of the AI response and tells ParsedContent what to render.
+// Its only job is to understand the shape of your data (objects, arrays, etc.).
 function AIContentRenderer({ content, onSectionLinkClick, onLegalLinkClick, openOptions, onOptionToggle }) {
     if (!content) return null;
 
+    // If it's already a React element (like from the pre-written demos), render it directly.
     if (React.isValidElement(content)) {
         return content;
     }
 
+    // If it's an array, handle its structure.
     if (Array.isArray(content)) {
         if (content.length > 0 && typeof content[0] === 'object' && content[0] !== null && 'header' in content[0]) {
             return (
                 <div className="text-white space-y-2">
                     {content.map((item, index) => (
                         <p key={index} className="whitespace-pre-line">
-                            <strong className="text-[#faecc4]">{item.header}</strong>
+                            <strong className="text-[#faecc4]">{item.header}</strong>{' '}
                             <ParsedContent text={item.text} onSectionLinkClick={onSectionLinkClick} onLegalLinkClick={onLegalLinkClick} />
                         </p>
                     ))}
@@ -121,11 +124,12 @@ function AIContentRenderer({ content, onSectionLinkClick, onLegalLinkClick, open
         );
     }
 
+    // If it's an object, handle its structure.
     if (typeof content === 'object' && content !== null) {
         if (content.recommendationSummary && content.implementationSteps) {
             return (
                 <div className="space-y-4">
-                    <p><ParsedContent text={content.recommendationSummary} onSectionLinkClick={onSectionLinkClick} onLegalLinkClick={onLegalLinkClick} /></p>
+                    <div className="whitespace-pre-line"><ParsedContent text={content.recommendationSummary} onSectionLinkClick={onSectionLinkClick} onLegalLinkClick={onLegalLinkClick} /></div>
                     <div className="border-t border-gray-600 pt-4">
                         <h4 className="font-bold text-lg text-[#faecc4] mb-2">Implementation Steps:</h4>
                         <AIContentRenderer content={content.implementationSteps} onSectionLinkClick={onSectionLinkClick} onLegalLinkClick={onLegalLinkClick} />
@@ -159,7 +163,7 @@ function AIContentRenderer({ content, onSectionLinkClick, onLegalLinkClick, open
         return (
             <div className="space-y-3 text-white">
                 {Object.entries(content).map(([prop, val]) => {
-                    if (prop === 'title') return null;
+                    if (prop === 'title') return null; // Don't render the title again inside the expandable
                     const formattedProp = prop.charAt(0).toUpperCase() + prop.slice(1).replace(/([A-Z])/g, ' $1');
 
                     if (prop === 'suggestedLanguage') {
@@ -182,7 +186,8 @@ function AIContentRenderer({ content, onSectionLinkClick, onLegalLinkClick, open
             </div>
         );
     }
-
+    
+    // Fallback for simple strings
     if (typeof content === 'string') {
         return (
             <div className="text-white space-y-2">
