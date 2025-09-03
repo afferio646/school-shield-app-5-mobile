@@ -7,19 +7,6 @@ import HandbookComparisonCard from './components/HandbookComparisonCard.jsx';
 import LegalReferenceJournal from './components/LegalReferenceJournal.jsx';
 import ExpandableOption from './components/ExpandableOption.jsx';
 
-const getCitationKey = (name) => {
-    const lowerName = name.toLowerCase();
-    if (lowerName.includes('title ix')) return 'Title IX';
-    if (lowerName.includes('ferpa')) return 'FERPA';
-    if (lowerName.includes('idea')) return 'IDEA';
-    if (lowerName.includes('title vi')) return 'Title VI';
-    if (lowerName.includes('section 504')) return 'Section 504';
-    if (lowerName.includes('age discrimination act')) return 'Age Discrimination Act';
-    // For case law or anything else not in our list, the full name is the key
-    return name;
-    if (lowerName.includes('americans with disabilities act') || lowerName.includes('ada')) return 'Americans with Disabilities Act';
-    return name;
-};
 
 // --- SECURE API KEY HANDLING ---
 
@@ -52,24 +39,19 @@ function SectionLink({ number, onLinkClick, children }) {
     );
 }
 
-function LegalLink({ name, isCase, onLegalLinkClick }) {
+function LegalLink({ name, onLegalLinkClick }) {
     return (
-        <span className="inline-flex items-center gap-2">
-            {isCase ? <em className="font-semibold">{name}</em> : <strong className="font-semibold">{name}</strong>}
-            <button
-                onClick={(e) => { e.stopPropagation(); onLegalLinkClick(name); }}
-                className="bg-purple-600 hover:bg-purple-700 text-white font-semibold px-2 py-0.5 rounded-md text-xs inline-flex items-center gap-1"
-            >
-                <Search size={12} /> View References
-            </button>
-        </span>
+        <button
+            onClick={(e) => { e.stopPropagation(); onLegalLinkClick(name); }}
+            className="text-blue-300 underline hover:text-blue-200 font-semibold focus:outline-none inline"
+        >
+            {name}
+        </button>
     );
 }
+
 // --- AIContentRenderer ---
 
-// =======================================================================
-// --- REPLACE YOUR OLD ParsedContent FUNCTION WITH THIS FINAL VERSION ---
-// =======================================================================
 function ParsedContent({ text, onSectionLinkClick, onLegalLinkClick }) {
     if (typeof text !== 'string') {
         return text;
@@ -86,17 +68,12 @@ function ParsedContent({ text, onSectionLinkClick, onLegalLinkClick }) {
     const boldRegex = new RegExp(`^${boldSrc}$`);
 
     const parts = text.split(combinedRegex).filter(Boolean);
-
     const statuteKeywords = ['Act', 'Title', 'Rule', 'Statute', 'Code', 'U.S.C.', 'FERPA', 'IDEA'];
-    
-    // This 'Set' will keep track of links we've already made.
-    const linkedItems = new Set();
 
     return (
         <>
             {parts.map((part, i) => {
                 if (sectionRegex.test(part)) {
-                    // No changes needed for Section links
                     const sectionNumber = part.match(/(\d+(\.\d+)?)/)[0];
                     return (
                         <SectionLink key={i} number={sectionNumber} onLinkClick={onSectionLinkClick}>
@@ -107,29 +84,13 @@ function ParsedContent({ text, onSectionLinkClick, onLegalLinkClick }) {
                 
                 if (caseLawRegex.test(part)) {
                     const caseName = part.slice(1, -1);
-                    // Check if we've already linked this case
-                    if (linkedItems.has(caseName)) {
-                        // If yes, just display plain text
-                        return <em key={i} className="font-semibold">{caseName}</em>;
-                    } else {
-                        // If no, create the link and add it to our memory
-                        linkedItems.add(caseName);
-                        return <LegalLink key={i} name={caseName} isCase={true} onLegalLinkClick={onLegalLinkClick} />;
-                    }
+                    return <LegalLink key={i} name={caseName} onLegalLinkClick={onLegalLinkClick} />;
                 }
 
                 if (boldRegex.test(part)) {
                     const innerText = part.slice(2, -2);
                     if (statuteKeywords.some(keyword => innerText.includes(keyword))) {
-                        // Check if we've already linked this statute
-                        if (linkedItems.has(innerText)) {
-                            // If yes, just display plain text
-                            return <strong key={i} className="font-semibold">{innerText}</strong>;
-                        } else {
-                            // If no, create the link and add it to our memory
-                            linkedItems.add(innerText);
-                            return <LegalLink key={i} name={innerText} isCase={false} onLegalLinkClick={onLegalLinkClick} />;
-                        }
+                        return <LegalLink key={i} name={innerText} onLegalLinkClick={onLegalLinkClick} />;
                     }
                     return <strong key={i} className="text-[#faecc4]">{innerText}</strong>;
                 }
@@ -1455,12 +1416,9 @@ Question: "${questionText}"`;
 const prompt = `Analyze the legal question for a school administrator.
 CRITICAL INSTRUCTIONS:
 1.  Your entire response must be a single, valid JSON object.
-2.  For the 'guidance' field, you must provide a thorough legal analysis. **Crucially, within this analysis, you MUST format any cited statute names** by wrapping their full name in double asterisks (e.g., **Title IX of the Education Amendments of 1972**).
-3.  For the 'references' object, you must follow this **tiered search strategy**:
-    **A: K-12 Case Search.** First, find a **precisely relevant court case from a K-12 school context**.
-    **B: Higher Education Fallback.** If and only if no direct K-12 case is found, broaden your search to find a **precisely relevant case from a higher education (university) context**.
-    **C: Statute Fallback.** If no relevant educational case is found, you MUST cite the controlling federal or state **statute**.
-    **D: Formatting and Justification.** In the 'citation' field, place ONLY the formatted name of the source you found (e.g., *Case v. Defendant* or **Statute Name**). In the 'relevance' field, explain how that source applies to the user's question. If you used a higher education case, briefly state why it is analogous to the K-12 environment.
+2.  **Global Formatting Rule:** Throughout the ENTIRE response, whenever you cite a legal statute (e.g., Title IX) or court case (e.g., *Davis v. Monroe*), you MUST format it for linking. Wrap statutes in double asterisks (**Statute Name**) and court cases in single asterisks (*Case Name*).
+3.  For the 'references' object: You MUST provide one **primary, highly-relevant court case** from a K-12 or analogous higher-education context. Populate the 'citation' field with the formatted case name and the 'relevance' field with a concise explanation. If no case can be found, state that in the 'citation' field.
+4.  For the 'guidance' field: Provide a thorough analysis. In your explanation, identify and cite **all relevant statutes** using the required formatting.
 
 Question: "${questionText}"`;
         
