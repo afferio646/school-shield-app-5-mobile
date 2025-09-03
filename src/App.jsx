@@ -54,28 +54,27 @@ function LegalLink({ name, isCase, onLegalLinkClick }) {
 }
 // --- AIContentRenderer ---
 
-// =======================================================================
-// --- REPLACE YOUR OLD ParsedContent FUNCTION WITH THIS ONE ---
-// =======================================================================
 function ParsedContent({ text, onSectionLinkClick, onLegalLinkClick }) {
     if (typeof text !== 'string') {
         return text;
     }
 
+    // Use safe, non-nested regex patterns
     const sectionSrc = 'Section\\s\\d+(?:\\.\\d+)?';
     const caseLawSrc = '\\*[^*]+\\s?v\\.\\s?[^*]+\\*';
-    // New, more flexible regex for statutes. It looks for keywords like Act, Title, Rule, etc.
-    const statuteSrc = '\\*\\*([\\w\\s,.()§]+?(Act|Title|Rule|Statute|Code|U\\.S\\.C\\.)[\\w\\s,.()§]*?)\\*\\*';
+    // A general pattern for any text wrapped in double asterisks
     const boldSrc = '\\*\\*.*?\\*\\*';
 
-    const combinedRegex = new RegExp(`(${sectionSrc}|${caseLawSrc}|${statuteSrc}|${boldSrc})`, 'g');
+    const combinedRegex = new RegExp(`(${sectionSrc}|${caseLawSrc}|${boldSrc})`, 'g');
 
     const sectionRegex = new RegExp(`^${sectionSrc}$`);
     const caseLawRegex = new RegExp(`^${caseLawSrc}$`);
-    const statuteRegex = new RegExp(`^${statuteSrc}$`);
     const boldRegex = new RegExp(`^${boldSrc}$`);
 
     const parts = text.split(combinedRegex).filter(Boolean);
+
+    // Keywords to identify a statute within a bolded phrase
+    const statuteKeywords = ['Act', 'Title', 'Rule', 'Statute', 'Code', 'U.S.C.', 'FERPA', 'IDEA'];
 
     return (
         <>
@@ -94,13 +93,14 @@ function ParsedContent({ text, onSectionLinkClick, onLegalLinkClick }) {
                     return <LegalLink key={i} name={caseName} isCase={true} onLegalLinkClick={onLegalLinkClick} />;
                 }
 
-                if (statuteRegex.test(part)) {
-                    const statuteName = part.slice(2, -2);
-                    return <LegalLink key={i} name={statuteName} isCase={false} onLegalLinkClick={onLegalLinkClick} />;
-                }
-
                 if (boldRegex.test(part)) {
-                    return <strong key={i} className="text-[#faecc4]">{part.slice(2, -2)}</strong>;
+                    const innerText = part.slice(2, -2);
+                    // Intelligent check: if the bolded text contains a keyword, treat it as a statute link.
+                    if (statuteKeywords.some(keyword => innerText.includes(keyword))) {
+                        return <LegalLink key={i} name={innerText} isCase={false} onLegalLinkClick={onLegalLinkClick} />;
+                    }
+                    // Otherwise, just render it as regular bold text.
+                    return <strong key={i} className="text-[#faecc4]">{innerText}</strong>;
                 }
                 
                 return <span key={i}>{part}</span>;
@@ -1424,13 +1424,12 @@ Question: "${questionText}"`;
 const prompt = `Analyze the legal question for a school administrator.
 CRITICAL INSTRUCTIONS:
 1.  Your entire response must be a single, valid JSON object.
-2.  **Global Formatting Rule:** Throughout the ENTIRE JSON response (in 'guidance', 'references', etc.), whenever you cite a legal statute, you MUST format its full name in bold by wrapping it in double asterisks (e.g., **Family Educational Rights and Privacy Act (FERPA)**).
+2.  For the 'guidance' field, you must provide a thorough legal analysis. **Crucially, within this analysis, you MUST format any cited statute names** by wrapping their full name in double asterisks (e.g., **Title IX of the Education Amendments of 1972**).
 3.  For the 'references' object, you must follow this **tiered search strategy**:
     **A: K-12 Case Search.** First, find a **precisely relevant court case from a K-12 school context**.
     **B: Higher Education Fallback.** If and only if no direct K-12 case is found, broaden your search to find a **precisely relevant case from a higher education (university) context**.
-    **C: Statute Fallback.** If no relevant K-12 or higher education case is found, you MUST cite the controlling federal or state **statute**.
+    **C: Statute Fallback.** If no relevant educational case is found, you MUST cite the controlling federal or state **statute**.
     **D: Formatting and Justification.** In the 'citation' field, place ONLY the formatted name of the source you found (e.g., *Case v. Defendant* or **Statute Name**). In the 'relevance' field, explain how that source applies to the user's question. If you used a higher education case, briefly state why it is analogous to the K-12 environment.
-4.  The 'guidance' field must provide a thorough, actionable legal analysis.
 
 Question: "${questionText}"`;
         
