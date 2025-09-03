@@ -1037,12 +1037,11 @@ function RiskAssessmentCenter({ handbookText, apiKey, handbookSectionLanguage, o
 }
 
 
-function IndustryQuestionsCard({ industryQuestions }) { // Now receives questions as a prop
+function IndustryQuestionsCard({ industryQuestions }) {
     const [selectedTopic, setSelectedTopic] = useState('All');
     const [analyzingQuestionId, setAnalyzingQuestionId] = useState(null);
     const [revealedAnswers, setRevealedAnswers] = useState({});
 
-    // New: "Archived Questions" is added to our topics list
     const topics = [
         "All",
         "Archived Questions",
@@ -1050,8 +1049,6 @@ function IndustryQuestionsCard({ industryQuestions }) { // Now receives question
         "Student, Parent & Faculty Handbook Policy Questions",
         "Governance and Board Topics"
     ];
-
-    // Note: The big, hard-coded 'industryQuestions' array is now gone from here.
 
     const filteredQuestions = selectedTopic === 'All'
         ? industryQuestions
@@ -1072,7 +1069,6 @@ function IndustryQuestionsCard({ industryQuestions }) { // Now receives question
     return (
         <div className="shadow-2xl border-0 rounded-2xl" style={{ background: "#4B5C64", color: "#fff" }}>
             <div className="p-6">
-                {/* The title is updated here */}
                 <SectionHeader icon={<TrendingUp className="text-[#faecc4]" size={26} />} title="Current Archived and Industry Questions" />
                 <div className="mb-6 text-white font-bold space-y-2">
                     <p>Below are current questions related to industry trends and legislation that are identified on an ongoing basis as the Micro Utility monitors a large number of resources relevant to the industry.</p>
@@ -1117,7 +1113,6 @@ function IndustryQuestionsCard({ industryQuestions }) { // Now receives question
         </div>
     );
 }
-
     const filteredQuestions = selectedTopic === 'All'
         ? industryQuestions
         : industryQuestions.filter(q => q.category === selectedTopic);
@@ -1779,7 +1774,7 @@ Question: "${questionText}"`;
                             "text": { "type": "STRING" }
                         },
                         required: ["header", "text"]
-                    }
+        _           }
                 }
             },
             required: ["answer"]
@@ -1889,7 +1884,6 @@ Question: "${questionText}"`;
         </div>
     );
 };
-
     const LEGAL = (
         <div className="max-w-2xl mx-auto space-y-8">
             <div className="shadow-2xl border-0 rounded-2xl" style={{ background: "#4B5C64", color: "#fff" }}>
