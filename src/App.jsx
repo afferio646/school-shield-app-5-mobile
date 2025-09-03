@@ -1684,17 +1684,20 @@ Question: "${questionText}"`;
             if (result.candidates && result.candidates[0].content.parts.length > 0) {
                 const jsonText = result.candidates[0].content.parts[0].text;
                 const parsedAnswer = JSON.parse(jsonText);
+                
+                // First, display the answer in the temporary area
                 setCurrentAnswer(parsedAnswer.answer);
 
-                // This is the logic that archives your question. It's already correct!
+                // Second, create the archived version
                 const formattedAnswer = parsedAnswer.answer.map(part => `${part.header}\n${part.text}`).join('\n\n');
                 const newArchivedQuestion = {
-                    id: Date.now(), // Use a timestamp for a unique ID
-                    category: 'Archived Questions', // Assign it to the correct category for filtering
+                    id: Date.now(),
+                    category: 'Archived Questions',
                     question: questionText,
                     answer: formattedAnswer
                 };
-                // This updates the state, adding the new question to the top of the list
+                
+                // Finally, add the question to the main archive list
                 setIndustryQuestions(prevQuestions => [newArchivedQuestion, ...prevQuestions]);
 
             } else { throw new Error("Invalid response structure from API"); }
@@ -1722,6 +1725,7 @@ Question: "${questionText}"`;
                         <p>Below you can ask specific questions by selecting a topic or generating your own question.</p>
                         <p>The system is connected to various leading edge LLM knowledge base networks and resources related to the industry that will generate answers immediately.</p>
                     </div>
+                    {/* Topic buttons remain the same */}
                     <div className="mb-4 flex flex-wrap gap-2">
                         {hosQaTopics.map((topic) => (
                             <button
@@ -1748,6 +1752,7 @@ Question: "${questionText}"`;
                         {isAnalyzing ? "Analyzing..." : (submittedQuestion ? "Clear Answer" : "Submit Question")}
                     </button>
 
+                    {/* This section now correctly uses the component's internal state */}
                     {submittedQuestion && (
                         <div className="mt-4 space-y-4">
                             <div className="p-3 bg-gray-700 rounded-md">
