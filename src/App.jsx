@@ -54,23 +54,22 @@ function LegalLink({ name, isCase, onLegalLinkClick }) {
 }
 // --- AIContentRenderer ---
 
+// =======================================================================
+// --- REPLACE YOUR OLD ParsedContent FUNCTION WITH THIS ONE ---
+// =======================================================================
 function ParsedContent({ text, onSectionLinkClick, onLegalLinkClick }) {
     if (typeof text !== 'string') {
         return text;
     }
 
-    // Define patterns for parsing
     const sectionSrc = 'Section\\s\\d+(?:\\.\\d+)?';
-    const caseLawSrc = '\\*[^*]+\\s?v\\.\\s?[^*]+\\*'; // Finds *Case v. Name*
-    // New, more specific pattern for statutes (looks for words like Title, Act, etc.)
-    const statuteSrc = '\\*\\*(Title \\w+|[\\w\\s]+? (Act|Code|Statute|Amendments) of \\d{4})\\*\\*';
-    // Generic bold pattern (for text that is NOT a statute)
+    const caseLawSrc = '\\*[^*]+\\s?v\\.\\s?[^*]+\\*';
+    // New, more flexible regex for statutes. It looks for keywords like Act, Title, Rule, etc.
+    const statuteSrc = '\\*\\*([\\w\\s,.()§]+?(Act|Title|Rule|Statute|Code|U\\.S\\.C\\.)[\\w\\s,.()§]*?)\\*\\*';
     const boldSrc = '\\*\\*.*?\\*\\*';
 
-    // The order is important: specific patterns (like statute) must come before general ones (like bold).
     const combinedRegex = new RegExp(`(${sectionSrc}|${caseLawSrc}|${statuteSrc}|${boldSrc})`, 'g');
 
-    // Individual regexes for testing each part
     const sectionRegex = new RegExp(`^${sectionSrc}$`);
     const caseLawRegex = new RegExp(`^${caseLawSrc}$`);
     const statuteRegex = new RegExp(`^${statuteSrc}$`);
@@ -95,14 +94,12 @@ function ParsedContent({ text, onSectionLinkClick, onLegalLinkClick }) {
                     return <LegalLink key={i} name={caseName} isCase={true} onLegalLinkClick={onLegalLinkClick} />;
                 }
 
-                // New block to handle statutes
                 if (statuteRegex.test(part)) {
                     const statuteName = part.slice(2, -2);
                     return <LegalLink key={i} name={statuteName} isCase={false} onLegalLinkClick={onLegalLinkClick} />;
                 }
 
                 if (boldRegex.test(part)) {
-                    // This now only catches regular bold text that isn't a recognized statute
                     return <strong key={i} className="text-[#faecc4]">{part.slice(2, -2)}</strong>;
                 }
                 
@@ -111,7 +108,6 @@ function ParsedContent({ text, onSectionLinkClick, onLegalLinkClick }) {
         </>
     );
 }
-
 // Component 2: Handles the structure of the AI response and tells ParsedContent what to render.
 // Its only job is to understand the shape of your data (objects, arrays, etc.).
 function AIContentRenderer({ content, onSectionLinkClick, onLegalLinkClick, openOptions, onOptionToggle }) {
@@ -1429,15 +1425,15 @@ const prompt = `Analyze the legal question for a school administrator.
 CRITICAL INSTRUCTIONS:
 1.  Your entire response must be a single, valid JSON object.
 2.  **Global Formatting Rule:** Throughout the ENTIRE JSON response (in 'guidance', 'references', etc.), whenever you cite a legal statute, you MUST format its full name in bold by wrapping it in double asterisks (e.g., **Family Educational Rights and Privacy Act (FERPA)**).
-3.  For the 'references' object, you must follow this process:
-    **A: Identify Concepts.** Analyze the user's question to identify the core legal concepts.
-    **B: Find & Verify Source.** Find a **precisely relevant K-12 school-specific** court case OR a controlling statute. Before finalizing your choice, perform this check: "Does the primary legal holding of this source directly answer the user's specific question?" If not, discard it and find a better one or use the fallback.
-    **C: Format Citation.** In the 'citation' field, place ONLY the formatted name of the source (e.g., *Case v. Defendant* or **Statute Name**).
-    **D: Explain Relevance.** In the 'relevance' field, write a concise explanation connecting the source to the user's question.
-    **Fallback Rule:** If no direct source is found, the 'citation' field MUST be "No direct K-12 source found." and the 'relevance' field must explain the general legal principle.
+3.  For the 'references' object, you must follow this **tiered search strategy**:
+    **A: K-12 Case Search.** First, find a **precisely relevant court case from a K-12 school context**.
+    **B: Higher Education Fallback.** If and only if no direct K-12 case is found, broaden your search to find a **precisely relevant case from a higher education (university) context**.
+    **C: Statute Fallback.** If no relevant K-12 or higher education case is found, you MUST cite the controlling federal or state **statute**.
+    **D: Formatting and Justification.** In the 'citation' field, place ONLY the formatted name of the source you found (e.g., *Case v. Defendant* or **Statute Name**). In the 'relevance' field, explain how that source applies to the user's question. If you used a higher education case, briefly state why it is analogous to the K-12 environment.
 4.  The 'guidance' field must provide a thorough, actionable legal analysis.
 
 Question: "${questionText}"`;
+        
         const legalResponseSchema = {
             type: "OBJECT",
             properties: {
