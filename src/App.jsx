@@ -7,9 +7,22 @@ import HandbookComparisonCard from './components/HandbookComparisonCard.jsx';
 import LegalReferenceJournal from './components/LegalReferenceJournal.jsx';
 import ExpandableOption from './components/ExpandableOption.jsx';
 
+const getCitationKey = (name) => {
+    const lowerName = name.toLowerCase();
+    if (lowerName.includes('title ix')) return 'Title IX';
+    if (lowerName.includes('ferpa')) return 'FERPA';
+    if (lowerName.includes('idea')) return 'IDEA';
+    if (lowerName.includes('title vi')) return 'Title VI';
+    if (lowerName.includes('section 504')) return 'Section 504';
+    if (lowerName.includes('age discrimination act')) return 'Age Discrimination Act';
+    // For case law or anything else not in our list, the full name is the key
+    return name;
+    if (lowerName.includes('americans with disabilities act') || lowerName.includes('ada')) return 'Americans with Disabilities Act';
+    return name;
+};
+
 // --- SECURE API KEY HANDLING ---
-// This now reads the API key from an environment variable.
-// Make sure to set this up in your Vercel deployment settings.
+
 const GEMINI_API_KEY = "AIzaSyCYAfKVJ9BTLWHpNLDr0bHDsvYOdWMfIpw";
 
 // --- Helper Components ---
