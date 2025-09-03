@@ -54,15 +54,16 @@ function LegalLink({ name, isCase, onLegalLinkClick }) {
 }
 // --- AIContentRenderer ---
 
+// =======================================================================
+// --- REPLACE YOUR OLD ParsedContent FUNCTION WITH THIS FINAL VERSION ---
+// =======================================================================
 function ParsedContent({ text, onSectionLinkClick, onLegalLinkClick }) {
     if (typeof text !== 'string') {
         return text;
     }
 
-    // Use safe, non-nested regex patterns
     const sectionSrc = 'Section\\s\\d+(?:\\.\\d+)?';
     const caseLawSrc = '\\*[^*]+\\s?v\\.\\s?[^*]+\\*';
-    // A general pattern for any text wrapped in double asterisks
     const boldSrc = '\\*\\*.*?\\*\\*';
 
     const combinedRegex = new RegExp(`(${sectionSrc}|${caseLawSrc}|${boldSrc})`, 'g');
@@ -73,13 +74,16 @@ function ParsedContent({ text, onSectionLinkClick, onLegalLinkClick }) {
 
     const parts = text.split(combinedRegex).filter(Boolean);
 
-    // Keywords to identify a statute within a bolded phrase
     const statuteKeywords = ['Act', 'Title', 'Rule', 'Statute', 'Code', 'U.S.C.', 'FERPA', 'IDEA'];
+    
+    // This 'Set' will keep track of links we've already made.
+    const linkedItems = new Set();
 
     return (
         <>
             {parts.map((part, i) => {
                 if (sectionRegex.test(part)) {
+                    // No changes needed for Section links
                     const sectionNumber = part.match(/(\d+(\.\d+)?)/)[0];
                     return (
                         <SectionLink key={i} number={sectionNumber} onLinkClick={onSectionLinkClick}>
@@ -90,16 +94,30 @@ function ParsedContent({ text, onSectionLinkClick, onLegalLinkClick }) {
                 
                 if (caseLawRegex.test(part)) {
                     const caseName = part.slice(1, -1);
-                    return <LegalLink key={i} name={caseName} isCase={true} onLegalLinkClick={onLegalLinkClick} />;
+                    // Check if we've already linked this case
+                    if (linkedItems.has(caseName)) {
+                        // If yes, just display plain text
+                        return <em key={i} className="font-semibold">{caseName}</em>;
+                    } else {
+                        // If no, create the link and add it to our memory
+                        linkedItems.add(caseName);
+                        return <LegalLink key={i} name={caseName} isCase={true} onLegalLinkClick={onLegalLinkClick} />;
+                    }
                 }
 
                 if (boldRegex.test(part)) {
                     const innerText = part.slice(2, -2);
-                    // Intelligent check: if the bolded text contains a keyword, treat it as a statute link.
                     if (statuteKeywords.some(keyword => innerText.includes(keyword))) {
-                        return <LegalLink key={i} name={innerText} isCase={false} onLegalLinkClick={onLegalLinkClick} />;
+                        // Check if we've already linked this statute
+                        if (linkedItems.has(innerText)) {
+                            // If yes, just display plain text
+                            return <strong key={i} className="font-semibold">{innerText}</strong>;
+                        } else {
+                            // If no, create the link and add it to our memory
+                            linkedItems.add(innerText);
+                            return <LegalLink key={i} name={innerText} isCase={false} onLegalLinkClick={onLegalLinkClick} />;
+                        }
                     }
-                    // Otherwise, just render it as regular bold text.
                     return <strong key={i} className="text-[#faecc4]">{innerText}</strong>;
                 }
                 
