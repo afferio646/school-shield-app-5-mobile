@@ -1745,13 +1745,12 @@ Question: "${questionText}"`;
     );
 
  
-const HOSQA = ({ industryQuestions, setIndustryQuestions, onSectionLinkClick, onLegalLinkClick }) => { // Takes in props now
+const HOSQA = ({ industryQuestions, setIndustryQuestions, onSectionLinkClick, onLegalLinkClick }) => {
     const [hosQaQuestion, setHosQaQuestion] = useState("");
     const [isAnalyzing, setIsAnalyzing] = useState(false);
     const [currentAnswer, setCurrentAnswer] = useState(null);
     const [submittedQuestion, setSubmittedQuestion] = useState(null);
 
-    // This is the updated submit handler
     const handleHosQaSubmit = async () => {
         const questionText = hosQaQuestion;
         if (!questionText || !GEMINI_API_KEY) {
@@ -1764,46 +1763,117 @@ const HOSQA = ({ industryQuestions, setIndustryQuestions, onSectionLinkClick, on
         setCurrentAnswer(null);
         setHosQaQuestion("");
 
-        const prompt = `As an expert on school administration...`; // Your existing prompt
-        const hosQaSchema = { /* ... your existing schema ... */ };
+        const prompt = `As an expert on school administration, answer the following question for a Head of School. Your response must be detailed, actionable, and professionally formatted. Where appropriate, reference specific laws (e.g., FERPA, IDEA, Title IX), regulations, or established best practices. Format the response as a JSON object with a single key "answer" which is an array of objects. Each object must have a "header" key (a short, bolded topic like "Policy Development:") and a "text" key (the detailed explanation).
+
+Question: "${questionText}"`;
+
+        const hosQaSchema = {
+            type: "OBJECT",
+            properties: {
+                "answer": {
+                    type: "ARRAY",
+                    items: {
+                        type: "OBJECT",
+                        properties: {
+                            "header": { "type": "STRING" },
+                            "text": { "type": "STRING" }
+                        },
+                        required: ["header", "text"]
+                    }
+                }
+            },
+            required: ["answer"]
+        };
 
         try {
-            // ... (your existing fetch/API call logic) ...
+            const payload = {
+                contents: [{ role: "user", parts: [{ text: prompt }] }],
+                generationConfig: {
+                    responseMimeType: "application/json",
+                    responseSchema: hosQaSchema
+                }
+            };
+            const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-latest:generateContent?key=${GEMINI_API_KEY}`;
+
+            const response = await fetch(apiUrl, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            });
+
+            if (!response.ok) { throw new Error(`API request failed with status ${response.status}`); }
+
             const result = await response.json();
             if (result.candidates && result.candidates[0].content.parts.length > 0) {
                 const jsonText = result.candidates[0].content.parts[0].text;
                 const parsedAnswer = JSON.parse(jsonText);
                 setCurrentAnswer(parsedAnswer.answer);
 
-                // --- NEW ARCHIVING LOGIC ---
-                // Format the AI answer into a single string
                 const formattedAnswer = parsedAnswer.answer.map(part => `${part.header}\n${part.text}`).join('\n\n');
-
-                // Create a new question object
                 const newArchivedQuestion = {
-                    id: Date.now(), // Use timestamp for a unique ID
-                    category: 'Archived Questions', // Assign to our new category
+                    id: Date.now(),
+                    category: 'Archived Questions',
                     question: questionText,
                     answer: formattedAnswer
                 };
-
-                // Add the new question to the top of the list
                 setIndustryQuestions(prevQuestions => [newArchivedQuestion, ...prevQuestions]);
-                // --- END OF NEW LOGIC ---
 
             } else { throw new Error("Invalid response structure from API"); }
         } catch (error) {
-            // ... (your existing error handling) ...
+            console.error("Error generating AI response:", error);
+            setCurrentAnswer([{ header: "Error", text: `Sorry, I encountered an error. ${error.message}` }]);
         } finally {
             setIsAnalyzing(false);
         }
     };
 
-    // ... (handleHosQaClose and the rest of the HOSQA JSX is the same, but now we pass the prop to IndustryQuestionsCard)
+    const handleHosQaClose = () => {
+        setCurrentAnswer(null);
+        setSubmittedQuestion(null);
+    };
+
+    const hosQaTopics = ["All", "Discipline", "HR", "Student Safety"];
 
     return (
         <div className="max-w-2xl mx-auto space-y-8">
-            {/* ... (the top part of HOSQA JSX) ... */}
+            <div className="shadow-2xl border-0 rounded-2xl" style={{ background: "#4B5C64", color: "#fff" }}>
+                <div className="p-6">
+                    <SectionHeader icon={<MessageCircle className="text-[#faecc4]" size={26} />} title="IQ School Leaders Q&A" />
+                    <div className="mb-6 text-white font-bold space-y-2">
+                        <p>Below you can ask specific questions by selecting a topic or generating your own question.</p>
+                        <p>The system is connected to various leading edge LLM knowledge base networks and resources related to the industry that will generate answers immediately.</p>
+                    </div>
+                    <div className="mb-4 flex flex-wrap gap-2">
+                        {hosQaTopics.map((topic) => (
+                            <button
+                                key={topic}
+                                onClick={() => {}}
+                                className={`px-3 py-1 rounded-lg transition-all ${'All' === topic ? 'bg-blue-600 text-white' : 'bg-gray-200 text-gray-800 hover:bg-gray-300'}`}
+                            >
+                                {topic}
+                            </button>
+                        ))}
+                    </div>
+                    <textarea
+                        placeholder="e.g. What are our obligations under FERPA if a parent requests to see another student's disciplinary records?"
+                        className="mb-2 min-h-[100px] w-full p-2 rounded-md text-black"
+                        style={{ background: "#fff", border: "2px solid #faecc4" }}
+                        value={hosQaQuestion}
+                        onChange={e => setHosQaQuestion(e.target.value)}
+                    />
+                    <button
+                        className="bg-blue-600 hover:bg-blue-700 text-white font-semibold px-5 rounded-lg mb-4 py-1"
+                        onClick={submittedQuestion ? handleHosQaClose : handleHosQaSubmit}
+                        disabled={isAnalyzing}
+                    >
+                        {isAnalyzing ? "Analyzing..." : (submittedQuestion ? "Clear Answer" : "Submit Question")}
+                    </button>
+
+                    {submittedQuestion && (
+                        <div className="mt-4 space-y-4">
+                            <div className="p-3 bg-gray-700 rounded-md">
+                                <p className="font-semibold">{submittedQuestion}</p>
+                                {isAnalyzing && <p className="text-sm text-yellow-400 mt-2">Analyzing...</p>}
                                 {currentAnswer && (
                                      <div className="mt-3 p-3 bg-gray-800 rounded-md border-l-4 border-blue-400">
                                          <AIContentRenderer content={currentAnswer} onSectionLinkClick={onSectionLinkClick} onLegalLinkClick={onLegalLinkClick} />
