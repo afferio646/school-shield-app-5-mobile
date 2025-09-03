@@ -1163,7 +1163,7 @@ function IndustryQuestionsCard({ industryQuestions }) {
             </div>
         </div>
     );
-
+}
 // --- New Helper for Highlighting Text ---
 function HighlightedText({ text, highlight }) {
     if (!highlight || !text) {
