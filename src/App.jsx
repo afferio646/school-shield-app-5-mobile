@@ -1036,63 +1036,87 @@ function RiskAssessmentCenter({ handbookText, apiKey, handbookSectionLanguage, o
     );
 }
 
-// --- Industry Questions Card Component ---
-function IndustryQuestionsCard() {
-    const [selectedTopic, setSelectedTopic] = useState('All');
-    const [analyzingQuestionId, setAnalyzingQuestionId] = useState(null);
-    const [revealedAnswers, setRevealedAnswers] = useState({});
 
-    const topics = [
-        "All",
-        "Human Resources",
-        "Student, Parent & Faculty Handbook Policy Questions",
-        "Governance and Board Topics"
-    ];
+function IndustryQuestionsCard({ industryQuestions }) { // Now receives questions as a prop
+    const [selectedTopic, setSelectedTopic] = useState('All');
+    const [analyzingQuestionId, setAnalyzingQuestionId] = useState(null);
+    const [revealedAnswers, setRevealedAnswers] = useState({});
 
-    const industryQuestions = [
-        // Human Resources
-        { id: 1, category: 'Human Resources', question: 'Has anyone hired an international teacher with U.S. work authorization?', answer: 'Solution: Schools often use H-1B visas for specialty occupations. It requires demonstrating the role needs a specific degree. Consult an immigration attorney to navigate the sponsorship process, including LCA filing and USCIS petitions.' },
-        { id: 2, category: 'Human Resources', question: 'Do you allow flexible or remote summer work for employees? Any sample policies?', answer: 'Solution: Yes, many schools offer this. A good policy defines eligibility (e.g., role, performance), expectations for availability and communication, and technology/security requirements. Specify if it\'s fully remote or hybrid.' },
-        { id: 3, category: 'Human Resources', question: 'Do you offer extended care (before/after school), and what discounts do faculty/staff receive?', answer: 'Solution: Most schools with extended care offer a significant discount (50-100%) to faculty and staff as a key benefit, though it may be a taxable fringe benefit depending on the discount amount.' },
-        { id: 4, category: 'Human Resources', question: 'Does your gift agreement include a clause allowing revocation due to a donor’s misconduct?', answer: 'Solution: Yes, this is increasingly common. A "morals clause" or "reputational harm" clause allows the school to return a gift and remove naming rights if a donor\'s actions harm the institution\'s reputation.' },
-        { id: 5, category: 'Human Resources', question: 'What’s your spending threshold for requiring Board/Finance Committee approval?', answer: 'Solution: This varies by budget size. A common model is: Head of School has discretion up to $X (e.g., $25,000), Finance Committee approval required up to $Y (e.g., $100,000), and full Board approval for anything above.' },
-        { id: 6, category: 'Human Resources', question: 'Do you have RFP or bid requirements for selecting vendors or contractors?', answer: 'Solution: A policy requiring multiple bids (e.g., three) for purchases over a certain threshold (e.g., $10,000) ensures fiscal responsibility and transparency.' },
-        { id: 7, category: 'Human Resources', question: 'Do you collect student or parent feedback in teacher evaluations?', answer: 'Solution: Yes, using confidential, structured surveys (e.g., through SurveyMonkey) can provide valuable feedback for professional growth. It should be one of multiple data points in an evaluation.' },
-        { id: 8, category: 'Human Resources', question: 'Are librarians paid on the teacher salary scale or a different structure?', answer: 'Solution: It varies. If the librarian holds a teaching degree and has instructional duties, they are often on the teacher scale. If the role is purely administrative, a separate staff scale may be used.' },
-        { id: 9, category: 'Human Resources', question: 'Does your school have ICE protocols or immigration enforcement policies?', answer: 'Solution: Schools should have a policy directing all such inquiries to the Head of School, and staff should be trained not to provide information or grant access without the Head\'s explicit permission and legal counsel\'s advice.' },
-        { id: 10, category: 'Human Resources', question: 'Can anyone share their maternity/paternity leave policies?', answer: 'Solution: A typical independent school policy offers 6-8 weeks of paid leave (often through short-term disability) and allows for the use of accrued sick/personal time. FMLA provides up to 12 weeks of unpaid, job-protected leave.' },
-        { id: 11, category: 'Human Resources', question: 'How do you handle political or cause-based student attire (e.g., BLM, Free Palestine, rainbow pins)?', answer: 'Solution: The policy should focus on disruption. If the attire does not disrupt the educational environment, it is generally protected speech. However, schools can prohibit hate speech or symbols that cause significant disruption.' },
-        { id: 12, category: 'Human Resources', question: 'How do you approach compensation when 12-month admin salaries seem lower per month than 10-month teacher salaries?', answer: 'Solution: This requires transparent communication about how salaries are calculated (e.g., daily rate vs. annual salary) and ensuring that administrative roles are benchmarked against comparable 12-month positions in the market.' },
-        // Student & Parent Handbook / Policy Questions
-        { id: 13, category: 'Student, Parent & Faculty Handbook Policy Questions', question: 'How should we handle consequences for a student caught stealing multiple valuable items, including apology expectations?', answer: 'Solution: A multi-faceted approach is best: suspension, restitution for stolen items, and a restorative justice component, such as a mediated apology to the victims to ensure it\'s sincere and educational.' },
-        { id: 14, category: 'Student, Parent & Faculty Handbook Policy Questions', question: 'Does anyone have a strong school refusal policy to share?', answer: 'Solution: A strong policy involves a collaborative approach: require medical documentation for absences, create a tiered intervention plan with counselors and admin, and define when the situation becomes a truancy issue requiring state reporting.' },
-        { id: 15, category: 'Student, Parent & Faculty Handbook Policy Questions', question: 'How do you authorize host families to act as legal guardians for international students?', answer: 'Solution: This requires a formal, notarized document from the student\'s parents, often called a "Power of Attorney for Care of a Minor," granting the host family authority for medical and educational decisions.' },
-        { id: 16, category: 'Student, Parent & Faculty Handbook Policy Questions', question: "How should we approach a report that a student sent explicit images to an adult (prior to a school trip)?", answer: 'Solution: Immediate action is critical. The student should be removed from the trip pending an investigation. The school must follow its child protection policy, which includes reporting the incident to the appropriate authorities (e.g., child protective services).' },
-        { id: 17, category: 'Student, Parent & Faculty Handbook Policy Questions', question: 'Do you have policy language about students distributing inappropriate photos on school devices?', answer: 'Solution: Your Acceptable Use Policy should explicitly prohibit the creation or distribution of obscene, defamatory, or inappropriate content, with clear consequences such as suspension and loss of technology privileges.' },
-        { id: 18, category: 'Student, Parent & Faculty Handbook Policy Questions', question: 'Should we allow a parent-owned business to charge for services at a school event? How do we maintain fairness?', answer: 'Solution: To avoid conflicts of interest, the best practice is to have a policy that either prohibits this or requires a formal, transparent bidding process (RFP) for all vendors, regardless of their connection to the school.' },
-        { id: 19, category: 'Student, Parent & Faculty Handbook Policy Questions', question: 'What policies exist around payout or acknowledgment for long-unused sick time for administrators?', answer: 'Solution: Some schools cap the accrual of sick time. Others offer a partial payout upon retirement (e.g., a percentage of the value) or convert it to service credit for retirement benefits, but this is becoming less common.' },
-        { id: 20, category: 'Student, Parent & Faculty Handbook Policy Questions', question: 'Has anyone transitioned to uniforms for Grades 1–8? Tips for change management and parent communication?', answer: 'Solution: Successful transitions involve a long lead time (12-18 months), forming a parent/faculty committee to select options, holding town halls to address concerns, and phasing in the requirement over a school year.' },
-        { id: 21, category: 'Student, Parent & Faculty Handbook Policy Questions', question: 'If a student withdraws due to medical issues and doesn’t enroll elsewhere, do we have truancy reporting obligations?', answer: 'Solution: Yes, if the student is of compulsory school age, you are likely required to report the withdrawal to the local school district to ensure the student is not considered truant. Check your state\'s specific reporting requirements.' },
-        { id: 22, category: 'Student, Parent & Faculty Handbook Policy Questions', question: 'How do you approach political or identity-related clothing that may be considered threatening or divisive?', answer: 'Solution: The policy should be viewpoint-neutral and focus on behavior and disruption. Clothing that targets individuals or groups with hate speech or incites violence can be prohibited, while general political statements are often protected.' },
-        { id: 23, category: 'Student, Parent & Faculty Handbook Policy Questions', question: 'Do you allow faculty to babysit or tutor current students outside of school? What policy language do you use?', answer: 'Solution: Many schools prohibit or strongly discourage this to avoid dual-role conflicts of interest. A policy should clearly state the school\'s position and require disclosure and approval from a division head if exceptions are considered.' },
-        { id: 24, category: 'Student, Parent & Faculty Handbook Policy Questions', question: 'Do you have student travel guidance for international trips, including phone security and re-entry detention protocols?', answer: 'Solution: Yes, guidance should include recommendations for using burner phones or wiping personal devices, awareness of digital surveillance in the host country, and a clear protocol for who to contact if a student is detained upon re-entry.' },
-        { id: 25, category: 'Student, Parent & Faculty Handbook Policy Questions', question: 'If summer programs are open to non-students, what forms or documents do you require at registration?', answer: 'Solution: Essential forms include an emergency contact/medical information form, liability waiver, photo/media release, and acknowledgment of key school policies (e.g., code of conduct, acceptable use).' },
-        // Governance & Board Topics
-        { id: 26, category: 'Governance and Board Topics', question: 'How do you keep former board members meaningfully engaged after their term ends?', answer: 'Solution: Create an emeritus or advisory council, invite them to special events, and keep them on targeted mailing lists. This maintains their institutional knowledge and potential for future support without blurring governance lines.' },
-        { id: 27, category: 'Governance and Board Topics', question: 'Who signs the annual tuition increase letter: Head, Board Chair, Business Officer, or someone else?', answer: 'Solution: The Board Chair should sign the letter, as setting tuition is a primary fiduciary responsibility of the Board. The Head of School may be a co-signer to show administrative support for the decision.' },
-    ];
+    // New: "Archived Questions" is added to our topics list
+    const topics = [
+        "All",
+        "Archived Questions",
+        "Human Resources",
+        "Student, Parent & Faculty Handbook Policy Questions",
+        "Governance and Board Topics"
+    ];
 
-    const handleAnalyze = (id) => {
-        if (revealedAnswers[id]) {
-            setRevealedAnswers(prev => ({ ...prev, [id]: false }));
-        } else {
-            setAnalyzingQuestionId(id);
-            setTimeout(() => {
-                setRevealedAnswers(prev => ({ ...prev, [id]: true }));
-                setAnalyzingQuestionId(null);
-            }, 1500);
-        }
-    };
+    // Note: The big, hard-coded 'industryQuestions' array is now gone from here.
+
+    const filteredQuestions = selectedTopic === 'All'
+        ? industryQuestions
+        : industryQuestions.filter(q => q.category === selectedTopic);
+
+    const handleAnalyze = (id) => {
+        if (revealedAnswers[id]) {
+            setRevealedAnswers(prev => ({ ...prev, [id]: false }));
+        } else {
+            setAnalyzingQuestionId(id);
+            setTimeout(() => {
+                setRevealedAnswers(prev => ({ ...prev, [id]: true }));
+                setAnalyzingQuestionId(null);
+            }, 1500);
+        }
+    };
+
+    return (
+        <div className="shadow-2xl border-0 rounded-2xl" style={{ background: "#4B5C64", color: "#fff" }}>
+            <div className="p-6">
+                {/* The title is updated here */}
+                <SectionHeader icon={<TrendingUp className="text-[#faecc4]" size={26} />} title="Current Archived and Industry Questions" />
+                <div className="mb-6 text-white font-bold space-y-2">
+                    <p>Below are current questions related to industry trends and legislation that are identified on an ongoing basis as the Micro Utility monitors a large number of resources relevant to the industry.</p>
+                    <p>Click the Analyze for Solution button and the system will gather information from specific LLM modules and data resources to provide answers.</p>
+                </div>
+                <div className="flex flex-wrap items-start gap-2 mb-6">
+                    {topics.map(topic => (
+                        <button
+                            key={topic}
+                            onClick={() => setSelectedTopic(topic)}
+                            className={`px-3 py-1 rounded-lg transition-all ${selectedTopic === topic ? 'bg-blue-600 text-white' : 'bg-gray-200 text-gray-800 hover:bg-gray-300'}`}
+                        >
+                            {topic}
+                        </button>
+                    ))}
+                </div>
+                <div className="space-y-2 max-h-96 overflow-y-scroll pr-2">
+                    {filteredQuestions.map((q, i) => (
+                        <React.Fragment key={q.id}>
+                            <div className="p-2 bg-gray-700 rounded-lg">
+                                <p className="font-semibold">{q.question}</p>
+                                <div className="mt-2">
+                                    <button
+                                        onClick={() => handleAnalyze(q.id)}
+                                        className="bg-blue-600 hover:bg-blue-700 text-white font-semibold px-4 py-1 rounded-lg text-xs"
+                                        disabled={analyzingQuestionId === q.id}
+                                    >
+                                        {analyzingQuestionId === q.id ? 'Analyzing...' : (revealedAnswers[q.id] ? 'Close' : 'Analyze for Solution')}
+                                    </button>
+                                </div>
+                                {revealedAnswers[q.id] && (
+                                    <div className="mt-3 p-3 bg-gray-800 rounded-md border-l-4 border-blue-400">
+                                        <p className="text-sm">{q.answer}</p>
+                                    </div>
+                                )}
+                            </div>
+                            {i < filteredQuestions.length - 1 && <hr className="border-gray-600 my-1" />}
+                        </React.Fragment>
+                    ))}
+                </div>
+            </div>
+        </div>
+    );
+}
 
     const filteredQuestions = selectedTopic === 'All'
         ? industryQuestions
@@ -1222,7 +1246,16 @@ export default function App() {
     // Modal State
     const [legalJournalQuery, setLegalJournalQuery] = useState("");
     const [isLegalJournalOpen, setIsLegalJournalOpen] = useState(false);
-
+    const [industryQuestions, setIndustryQuestions] = useState([
+    { id: 1, category: 'Human Resources', question: 'Has anyone hired an international teacher with U.S. work authorization?', answer: 'Solution: Schools often use H-1B visas for specialty occupations. It requires demonstrating the role needs a specific degree. Consult an immigration attorney to navigate the sponsorship process, including LCA filing and USCIS petitions.' },
+    { id: 2, category: 'Human Resources', question: 'Do you allow flexible or remote summer work for employees? Any sample policies?', answer: 'Solution: Yes, many schools offer this. A good policy defines eligibility (e.g., role, performance), expectations for availability and communication, and technology/security requirements. Specify if it\'s fully remote or hybrid.' },
+    { id: 5, category: 'Human Resources', question: 'What’s your spending threshold for requiring Board/Finance Committee approval?', answer: 'Solution: This varies by budget size. A common model is: Head of School has discretion up to $X (e.g., $25,000), Finance Committee approval required up to $Y (e.g., $100,000), and full Board approval for anything above.' },
+    { id: 10, category: 'Human Resources', question: 'Can anyone share their maternity/paternity leave policies?', answer: 'Solution: A typical independent school policy offers 6-8 weeks of paid leave (often through short-term disability) and allows for the use of accrued sick/personal time. FMLA provides up to 12 weeks of unpaid, job-protected leave.' },
+    { id: 13, category: 'Student, Parent & Faculty Handbook Policy Questions', question: 'How should we handle consequences for a student caught stealing multiple valuable items, including apology expectations?', answer: 'Solution: A multi-faceted approach is best: suspension, restitution for stolen items, and a restorative justice component, such as a mediated apology to the victims to ensure it\'s sincere and educational.' },
+    { id: 16, category: 'Student, Parent & Faculty Handbook Policy Questions', question: 'How should we approach a report that a student sent explicit images to an adult (prior to a school trip)?', answer: 'Solution: Immediate action is critical. The student should be removed from the trip pending an investigation. The school must follow its child protection policy, which includes reporting the incident to the appropriate authorities (e.g., child protective services).' },
+    { id: 23, category: 'Student, Parent & Faculty Handbook Policy Questions', question: 'Do you allow faculty to babysit or tutor current students outside of school? What policy language do you use?', answer: 'Solution: Many schools prohibit or strongly discourage this to avoid dual-role conflicts of interest. A policy should clearly state the school\'s position and require disclosure and approval from a division head if exceptions are considered.' },
+    { id: 27, category: 'Governance and Board Topics', question: 'Who signs the annual tuition increase letter: Head, Board Chair, Business Officer, or someone else?', answer: 'Solution: The Board Chair should sign the letter, as setting tuition is a primary fiduciary responsibility of the Board. The Head of School may be a co-signer to show administrative support for the decision.' },
+  ]);
     const handleOpenLegalJournal = useCallback((caseName) => {
         setLegalJournalQuery(caseName);
         setIsLegalJournalOpen(true);
@@ -1711,61 +1744,81 @@ Question: "${questionText}"`;
         </div>
     );
 
-    const HOSQA = (
-        <div className="max-w-2xl mx-auto space-y-8">
-            <div className="shadow-2xl border-0 rounded-2xl" style={{ background: "#4B5C64", color: "#fff" }}>
-                <div className="p-6">
-                    <SectionHeader icon={<MessageCircle className="text-[#faecc4]" size={26} />} title="IQ School Leaders Q&A" />
-                           <div className="mb-6 text-white font-bold space-y-2">
-                                <p>Below you can ask specific questions by selecting a topic or generating your own question.</p>
-                                <p>The system is connected to various leading edge LLM knowledge base networks and resources related to the industry that will generate answers immediately.</p>
-                            </div>
-                    <div className="mb-4 flex flex-wrap gap-2">
-                        {hosQaTopics.map((topic) => (
-                            <button
-                                key={topic}
-                                onClick={() => {}}
-                                className={`px-3 py-1 rounded-lg transition-all ${'All' === topic ? 'bg-blue-600 text-white' : 'bg-gray-200 text-gray-800 hover:bg-gray-300'}`}
-                            >
-                                {topic}
-                            </button>
-                        ))}
-                    </div>
-                    <textarea
-                        placeholder="e.g. What are our obligations under FERPA if a parent requests to see another student's disciplinary records?"
-                        className="mb-2 min-h-[100px] w-full p-2 rounded-md text-black"
-                        style={{ background: "#fff", border: "2px solid #faecc4" }}
-                        value={hosQaQuestion}
-                        onChange={e => setHosQaQuestion(e.target.value)}
-                    />
-                    <button
-                        className="bg-blue-600 hover:bg-blue-700 text-white font-semibold px-5 rounded-lg mb-4 py-1"
-                        onClick={submittedQuestion ? handleHosQaClose : handleHosQaSubmit}
-                        disabled={isAnalyzing}
-                    >
-                        {isAnalyzing ? "Analyzing..." : (submittedQuestion ? "Clear Answer" : "Submit Question")}
-                    </button>
+ 
+const HOSQA = ({ industryQuestions, setIndustryQuestions, onSectionLinkClick, onLegalLinkClick }) => { // Takes in props now
+    const [hosQaQuestion, setHosQaQuestion] = useState("");
+    const [isAnalyzing, setIsAnalyzing] = useState(false);
+    const [currentAnswer, setCurrentAnswer] = useState(null);
+    const [submittedQuestion, setSubmittedQuestion] = useState(null);
 
-                    {submittedQuestion && (
-                        <div className="mt-4 space-y-4">
-                            <div className="p-3 bg-gray-700 rounded-md">
-                                <p className="font-semibold">{submittedQuestion}</p>
-                                {isAnalyzing && <p className="text-sm text-yellow-400 mt-2">Analyzing...</p>}
-                                {currentAnswer && (
-                                     <div className="mt-3 p-3 bg-gray-800 rounded-md border-l-4 border-blue-400">
-                                         <AIContentRenderer content={currentAnswer} onSectionLinkClick={handleSectionLinkClick} onLegalLinkClick={handleOpenLegalJournal} />
-                                     </div>
-                                )}
-                            </div>
-                        </div>
-                    )}
-                </div>
-            </div>
+    // This is the updated submit handler
+    const handleHosQaSubmit = async () => {
+        const questionText = hosQaQuestion;
+        if (!questionText || !GEMINI_API_KEY) {
+            alert("Please provide a question and ensure your API key is set.");
+            return;
+        }
 
-            <IndustryQuestionsCard />
+        setSubmittedQuestion(questionText);
+        setIsAnalyzing(true);
+        setCurrentAnswer(null);
+        setHosQaQuestion("");
 
-        </div>
-    );
+        const prompt = `As an expert on school administration...`; // Your existing prompt
+        const hosQaSchema = { /* ... your existing schema ... */ };
+
+        try {
+            // ... (your existing fetch/API call logic) ...
+            const result = await response.json();
+            if (result.candidates && result.candidates[0].content.parts.length > 0) {
+                const jsonText = result.candidates[0].content.parts[0].text;
+                const parsedAnswer = JSON.parse(jsonText);
+                setCurrentAnswer(parsedAnswer.answer);
+
+                // --- NEW ARCHIVING LOGIC ---
+                // Format the AI answer into a single string
+                const formattedAnswer = parsedAnswer.answer.map(part => `${part.header}\n${part.text}`).join('\n\n');
+
+                // Create a new question object
+                const newArchivedQuestion = {
+                    id: Date.now(), // Use timestamp for a unique ID
+                    category: 'Archived Questions', // Assign to our new category
+                    question: questionText,
+                    answer: formattedAnswer
+                };
+
+                // Add the new question to the top of the list
+                setIndustryQuestions(prevQuestions => [newArchivedQuestion, ...prevQuestions]);
+                // --- END OF NEW LOGIC ---
+
+            } else { throw new Error("Invalid response structure from API"); }
+        } catch (error) {
+            // ... (your existing error handling) ...
+        } finally {
+            setIsAnalyzing(false);
+        }
+    };
+
+    // ... (handleHosQaClose and the rest of the HOSQA JSX is the same, but now we pass the prop to IndustryQuestionsCard)
+
+    return (
+        <div className="max-w-2xl mx-auto space-y-8">
+            {/* ... (the top part of HOSQA JSX) ... */}
+                                {currentAnswer && (
+                                     <div className="mt-3 p-3 bg-gray-800 rounded-md border-l-4 border-blue-400">
+                                         <AIContentRenderer content={currentAnswer} onSectionLinkClick={onSectionLinkClick} onLegalLinkClick={onLegalLinkClick} />
+                                     </div>
+                                )}
+                            </div>
+                        </div>
+                    )}
+                </div>
+            </div>
+
+            <IndustryQuestionsCard industryQuestions={industryQuestions} />
+        </div>
+    );
+};
 
     const LEGAL = (
         <div className="max-w-2xl mx-auto space-y-8">
@@ -2042,7 +2095,7 @@ Question: "${questionText}"`;
         {page === "calendar" && <CALENDAR />}
         {page === "alerts" && ALERTS}
         {page === "trends" && TRENDS}
-        {page === "hosqa" && HOSQA}
+        {page === "hosqa" && <HOSQA industryQuestions={industryQuestions} setIndustryQuestions={setIndustryQuestions} onSectionLinkClick={handleSectionLinkClick} onLegalLinkClick={handleOpenLegalJournal} />}
         {page === "legal" && LEGAL}
     </main>
 </div>
