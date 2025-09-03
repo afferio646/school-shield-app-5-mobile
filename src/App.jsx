@@ -1424,21 +1424,32 @@ Question: "${questionText}"`;
         setIsAnalyzingLegal(true);
         setLegalAnswer(null);
         setLegalQuestion("");
-
-        const prompt = `Analyze the following legal question for a school administrator.
+       
+const prompt = `Analyze the legal question for a school administrator.
 CRITICAL INSTRUCTIONS:
-1.  The 'references' field is mandatory. You MUST provide citations to real, applicable statutes (e.g., 20 U.S.C. § 1232g for FERPA) or relevant, verifiable court cases in italics (e.g., *Tinker v. Des Moines*).
-2.  The 'guidance' must be a thorough legal analysis.
-3.  The 'risk' section must provide a clear, defensible assessment.
-Format your response as a JSON object with three keys: "guidance", "references", and "risk". The "risk" key's value should be an object with "level", "analysis", and "recommendation". The "recommendation" value MUST be an array of strings, each being a numbered step.
+1.  Your entire response must be a single, valid JSON object.
+2.  **Global Formatting Rule:** Throughout the ENTIRE JSON response (in 'guidance', 'references', etc.), whenever you cite a legal statute, you MUST format its full name in bold by wrapping it in double asterisks (e.g., **Family Educational Rights and Privacy Act (FERPA)**).
+3.  For the 'references' object, you must follow this process:
+    **A: Identify Concepts.** Analyze the user's question to identify the core legal concepts.
+    **B: Find & Verify Source.** Find a **precisely relevant K-12 school-specific** court case OR a controlling statute. Before finalizing your choice, perform this check: "Does the primary legal holding of this source directly answer the user's specific question?" If not, discard it and find a better one or use the fallback.
+    **C: Format Citation.** In the 'citation' field, place ONLY the formatted name of the source (e.g., *Case v. Defendant* or **Statute Name**).
+    **D: Explain Relevance.** In the 'relevance' field, write a concise explanation connecting the source to the user's question.
+    **Fallback Rule:** If no direct source is found, the 'citation' field MUST be "No direct K-12 source found." and the 'relevance' field must explain the general legal principle.
+4.  The 'guidance' field must provide a thorough, actionable legal analysis.
 
 Question: "${questionText}"`;
-
         const legalResponseSchema = {
             type: "OBJECT",
             properties: {
                 "guidance": { "type": "STRING" },
-                "references": { "type": "STRING" },
+                "references": {
+            type: "OBJECT",
+            properties: {
+                "citation": { "type": "STRING" },
+                "relevance": { "type": "STRING" }
+             },
+            required: ["citation", "relevance"]
+            },
                 "risk": {
                     type: "OBJECT",
                     properties: {
@@ -1460,7 +1471,7 @@ Question: "${questionText}"`;
                     responseSchema: legalResponseSchema
                 }
             };
-            const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-latest:generateContent?key=${GEMINI_API_KEY}`;
+            const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-pro-latest:generateContent?key=${GEMINI_API_KEY}`;
 
             const response = await fetch(apiUrl, {
                 method: 'POST',
